@@ -129,13 +129,13 @@ struct click final {
 
 int main ( ) {
 
-    sax::one_based_array<int, 5> a;
+    sax::one_based_array<int, 35> a; // 35 * 4 = 140
 
     a[ 5 ] = 159;
 
     std::cout << a[ 5 ] << nl;
 
-    constexpr sax::one_based_array<int, 5> b = std::move ( a );
+    sax::one_based_array<int, 35> b = std::move ( a );
 
     std::cout << b[ 5 ] << ' ' << ( a == b ) << nl;
 
