@@ -36,6 +36,27 @@
 
 namespace sax {
 
+struct CompareThreeWay {
+    template<typename T, typename U>
+    [[nodiscard]] int operator( ) ( T const & lhs, U const & rhs ) const noexcept {
+        if ( lhs < rhs )
+            return -1;
+        if ( rhs < lhs )
+            return 1;
+        return 0;
+    }
+};
+
+template<typename InputIt1, typename InputIt2, typename Compare = CompareThreeWay>
+[[nodiscard]] int compare_three_way ( InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2 ) {
+    for ( ; ( first1 != last1 ) && ( first2 != last2 ); ++first1, ( void ) ++first2 ) {
+        int c = Compare ( *first1, *first2 );
+        if ( c != 0 )
+            return c;
+    }
+    return first1 == last1 ? ( ( first2 == last2 ) ? 0 : -1 ) : 1;
+}
+
 template<typename ValueType, std::size_t Size>
 struct one_based_array {
 
@@ -276,10 +297,9 @@ struct one_based_array {
     }
     [[nodiscard]] constexpr bool operator<= ( one_based_array const & rhs_ ) noexcept { return not operator> ( rhs_ ); }
 
-    // [[nodiscard]] constexpr auto operator<=> ( one_based_array const & rhs_ ) noexcept {
-    //     return std::lexicographical_compare_three_way ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ),
-    //                                                     rhs_.m_data.end ( ) );
-    // }
+    [[nodiscard]] constexpr friend auto operator<=> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return compare_three_way ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ) );
+    }
 
     // Output.
 
