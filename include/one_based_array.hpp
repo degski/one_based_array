@@ -34,6 +34,8 @@
 #include <limits>
 #include <type_traits>
 
+#include <sax/stl.hpp>
+
 namespace sax {
 
 struct compare_3way {
@@ -57,7 +59,7 @@ template<typename InputIt1, typename InputIt2, typename Compare = compare_3way>
 }
 
 template<typename ValueType, std::size_t Size>
-struct one_based_array {
+struct alignas ( std::max ( alignof ( ValueType ), 16ull ) ) one_based_array { // At least 16-byte aligned.
 
     using value_type             = ValueType;
     using size_type              = std::size_t;
@@ -198,28 +200,28 @@ struct one_based_array {
     // Iterators.
 
     public:
-    [[nodiscard]] constexpr const_iterator begin ( ) const noexcept { return std::addressof ( *m_data.begin ( ) ); }
+    [[nodiscard]] constexpr const_iterator begin ( ) const noexcept { return std::launder ( m_data.begin ( ) ); }
     [[nodiscard]] constexpr const_iterator cbegin ( ) const noexcept { return begin ( ); }
     [[nodiscard]] constexpr iterator begin ( ) noexcept { return const_cast<iterator> ( std::as_const ( *this ).begin ( ) ); }
 
-    [[nodiscard]] constexpr const_iterator end ( ) const noexcept { return std::addressof ( *m_data.end ( ) ); }
+    [[nodiscard]] constexpr const_iterator end ( ) const noexcept { return std::launder ( m_data.end ( ) ); }
     [[nodiscard]] constexpr const_iterator cend ( ) const noexcept { return end ( ); }
     [[nodiscard]] constexpr iterator end ( ) noexcept { return const_cast<iterator> ( std::as_const ( *this ).end ( ) ); }
 
-    [[nodiscard]] constexpr const_iterator rbegin ( ) const noexcept { return std::addressof ( *m_data.rbegin ( ) ); }
+    [[nodiscard]] constexpr const_iterator rbegin ( ) const noexcept { return std::launder ( m_data.rbegin ( ) ); }
     [[nodiscard]] constexpr const_iterator crbegin ( ) const noexcept { return rbegin ( ); }
     [[nodiscard]] constexpr iterator rbegin ( ) noexcept { return const_cast<iterator> ( std::as_const ( *this ).rbegin ( ) ); }
 
-    [[nodiscard]] constexpr const_iterator rend ( ) const noexcept { return std::addressof ( *m_data.rend ( ) ); }
+    [[nodiscard]] constexpr const_iterator rend ( ) const noexcept { return std::launder ( m_data.rend ( ) ); }
     [[nodiscard]] constexpr const_iterator crend ( ) const noexcept { return rend ( ); }
     [[nodiscard]] constexpr iterator rend ( ) noexcept { return const_cast<iterator> ( std::as_const ( *this ).rend ( ) ); }
 
     // Access.
 
-    [[nodiscard]] constexpr const_reference front ( ) const noexcept { return *m_data.front ( ); }
+    [[nodiscard]] constexpr const_reference front ( ) const noexcept { return m_data.front ( ); }
     [[nodiscard]] constexpr reference front ( ) noexcept { return const_cast<reference> ( std::as_const ( *this ).front ( ) ); }
 
-    [[nodiscard]] constexpr const_reference back ( ) const noexcept { return *m_data.back ( ); }
+    [[nodiscard]] constexpr const_reference back ( ) const noexcept { return m_data.back ( ); }
     [[nodiscard]] constexpr reference back ( ) noexcept { return const_cast<reference> ( std::as_const ( *this ).back ( ) ); }
 
     [[nodiscard]] const_reference at ( size_type const i_ ) const {
@@ -240,37 +242,71 @@ struct one_based_array {
 
     // Sizes.
 
-    [[nodiscard]] static constexpr std::size_t size ( ) noexcept { return Size; } // Non std, but useful.
-    [[nodiscard]] static constexpr std::size_t max_size ( ) noexcept { return Size; }
     [[nodiscard]] static constexpr std::size_t capacity ( ) noexcept { return Size; }
+    [[nodiscard]] static constexpr std::size_t size ( ) noexcept { return capacity ( ); } // Non-std (C++17 <), but useful.
+    [[nodiscard]] static constexpr std::size_t max_size ( ) noexcept { return capacity ( ); }
 
     // STL-functionality.
 
     constexpr void fill ( value_type const & value_ ) { m_data.fill ( value_ ); }
     constexpr void swap ( one_based_array & other_ ) noexcept { m_data.swap ( other_ ); }
 
+    private:
+    void memcpy_impl ( void * const to_, void const * const from_, size_t const size_ ) noexcept {
+        assert ( to_ and from_ and to_ != from_ and size_ > size_t{ 0u } ); // Check for UB, and sane memcpy usage.
+        if ( size_t const size_lower_multiple_of_32 = size_ & 0b1111'1111'1111'1111'1111'1111'1111'0000;
+             size_lower_multiple_of_32 ) {
+            sax::memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_32 );
+            if ( size_t const size_remaining = size_ - size_lower_multiple_of_32; size_remaining )
+                std::memcpy ( to_ + size_lower_multiple_of_32, from_ + size_lower_multiple_of_32, size_remaining );
+            return;
+        }
+        std::memcpy ( tp_, from, size_ );
+    }
+
+    template<typename InputIt, typename OutputIt>
+    OutputIt copy_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+        if constexpr ( std::is_trivially_copyable<value_type>::value ) {
+            return memcpy_impl ( std::launder ( d_first_ ), std::launder ( first_ ), size ( ) * sizeof ( value_type ) );
+        }
+        else {
+            return std::copy ( first_, last_, d_first_ );
+        }
+    }
+
+    template<typename InputIt, typename OutputIt>
+    OutputIt move_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+        if constexpr ( std::is_trivially_copyable<value_type>::value ) {
+            return memcpy_impl ( std::launder ( d_first_ ), std::launder ( first_ ), size ( ) * sizeof ( value_type ) );
+        }
+        else {
+            return std::move ( first_, last_, d_first_ );
+        }
+    }
+
+    public:
     void copy ( one_based_array const & other_ ) {
-        std::copy ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
     template<typename U>
     void copy ( one_based_array<U, Size> const & other_ ) {
-        std::copy ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
     template<typename U>
     void copy ( std::array<U, Size> const & other_ ) {
-        std::copy ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
 
     void move ( one_based_array && other_ ) noexcept {
-        std::move ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
     template<typename U>
     void move ( one_based_array<U, Size> && other_ ) noexcept {
-        std::move ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
     template<typename U>
     void move ( std::array<U, Size> && other_ ) noexcept {
-        std::move ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
     }
 
     // Global functions.
@@ -301,7 +337,8 @@ struct one_based_array {
     }
 
     [[nodiscard]] constexpr friend bool operator<=> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
-        return compare_three_way ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ) );
+        return lexicographical_compare_3way ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
+                                              rhs_.m_data.end ( ) );
     }
 
     // Output.
@@ -313,5 +350,5 @@ struct one_based_array {
     }
 
     data_type m_data;
-};
+}; // namespace sax
 } // namespace sax
