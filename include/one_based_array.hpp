@@ -256,7 +256,7 @@ struct one_based_array {
     // Global functions.
 
     // Comparison.
-    /*
+
     [[nodiscard]] constexpr bool operator== ( one_based_array const & rhs_ ) const noexcept {
         return std::equal ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
     }
@@ -264,19 +264,21 @@ struct one_based_array {
         return not std::equal ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
     }
 
-    [[nodiscard]] constexpr bool operator< ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    /*
+    [[nodiscard]] constexpr bool operator< ( one_based_array const & rhs_ ) noexcept {
         return std::less ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
     }
-    [[nodiscard]] constexpr bool operator>= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr bool operator>= ( one_based_array const & rhs_ ) noexcept {
         return std::greater_equal ( m_data.begin ( ), m_data.begin ( ), m_data.begin ( ) );
     }
-    [[nodiscard]] constexpr bool operator> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr bool operator> ( one_based_array const & rhs_ ) noexcept {
         return std::greater ( lhs_.m_data.begin ( ), lhs_.m_data.begin ( ), rhs_.m_data.begin ( ) );
     }
-    [[nodiscard]] constexpr bool operator<= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr bool operator<= ( one_based_array const & rhs_ ) noexcept {
         return std::less_equal ( lhs_.m_data.begin ( ), lhs_.m_data.begin ( ), rhs_.m_data.begin ( ) );
     }
     */
+
     // Output.
 
     template<typename Stream>

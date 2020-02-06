@@ -131,13 +131,13 @@ int main ( ) {
 
     sax::one_based_array<int, 5> a;
 
-    a[ 5 ].i = 159;
+    a[ 5 ] = 159;
 
-    std::cout << a[ 5 ].i << nl;
+    std::cout << a[ 5 ] << nl;
 
     sax::one_based_array<int, 5> b = a;
 
-    std::cout << b[ 5 ].i << ' ' << ( a == b ) << nl;
+    std::cout << b[ 5 ] << ' ' << ( a == b ) << nl;
 
     return EXIT_SUCCESS;
 }
