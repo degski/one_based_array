@@ -252,7 +252,7 @@ struct alignas ( std::max ( alignof ( ValueType ), 16ull ) ) one_based_array { /
     constexpr void swap ( one_based_array & other_ ) noexcept { m_data.swap ( other_ ); }
 
     private:
-    void memcpy_impl ( void * const to_, void const * const from_, size_t const size_ ) noexcept {
+    void memcpy_impl ( std::byte * to_, std::byte const * from_, size_t size_ ) noexcept {
         assert ( to_ and from_ and to_ != from_ and size_ > size_t{ 0u } ); // Check for UB, and sane memcpy usage.
         if ( size_t const size_lower_multiple_of_32 = size_ & 0b1111'1111'1111'1111'1111'1111'1111'0000;
              size_lower_multiple_of_32 ) {
@@ -261,26 +261,28 @@ struct alignas ( std::max ( alignof ( ValueType ), 16ull ) ) one_based_array { /
                 std::memcpy ( to_ + size_lower_multiple_of_32, from_ + size_lower_multiple_of_32, size_remaining );
             return;
         }
-        std::memcpy ( tp_, from, size_ );
+        std::memcpy ( to_, from_, size_ );
     }
 
     template<typename InputIt, typename OutputIt>
-    OutputIt copy_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+    void copy_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
         if constexpr ( std::is_trivially_copyable<value_type>::value ) {
-            return memcpy_impl ( std::launder ( d_first_ ), std::launder ( first_ ), size ( ) * sizeof ( value_type ) );
+            memcpy_impl ( reinterpret_cast<std::byte *> ( std::addressof ( *d_first_ ) ),
+                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ), size ( ) * sizeof ( value_type ) );
         }
         else {
-            return std::copy ( first_, last_, d_first_ );
+            std::copy ( first_, last_, d_first_ );
         }
     }
 
     template<typename InputIt, typename OutputIt>
-    OutputIt move_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+    void move_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
         if constexpr ( std::is_trivially_copyable<value_type>::value ) {
-            return memcpy_impl ( std::launder ( d_first_ ), std::launder ( first_ ), size ( ) * sizeof ( value_type ) );
+            memcpy_impl ( reinterpret_cast<std::byte *> ( std::addressof ( *d_first_ ) ),
+                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ), size ( ) * sizeof ( value_type ) );
         }
         else {
-            return std::move ( first_, last_, d_first_ );
+            std::move ( first_, last_, d_first_ );
         }
     }
 
