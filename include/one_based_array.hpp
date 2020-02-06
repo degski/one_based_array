@@ -258,26 +258,28 @@ struct one_based_array {
     // Comparison.
 
     [[nodiscard]] constexpr bool operator== ( one_based_array const & rhs_ ) const noexcept {
-        return std::equal ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
+        return std::equal ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ) );
     }
     [[nodiscard]] constexpr bool operator!= ( one_based_array const & rhs_ ) const noexcept {
-        return not std::equal ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
+        return not std::equal ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ) );
     }
 
-    /*
     [[nodiscard]] constexpr bool operator< ( one_based_array const & rhs_ ) noexcept {
-        return std::less ( m_data.begin ( ), m_data.begin ( ), rhs_.m_data.begin ( ) );
+        return std::lexicographical_compare ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ),
+                                              std::less<value_type> ( ) );
     }
-    [[nodiscard]] constexpr bool operator>= ( one_based_array const & rhs_ ) noexcept {
-        return std::greater_equal ( m_data.begin ( ), m_data.begin ( ), m_data.begin ( ) );
-    }
+    [[nodiscard]] constexpr bool operator>= ( one_based_array const & rhs_ ) noexcept { return not operator< ( rhs_ ); }
+
     [[nodiscard]] constexpr bool operator> ( one_based_array const & rhs_ ) noexcept {
-        return std::greater ( lhs_.m_data.begin ( ), lhs_.m_data.begin ( ), rhs_.m_data.begin ( ) );
+        return std::lexicographical_compare ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ),
+                                              std::greater<value_type> ( ) );
     }
-    [[nodiscard]] constexpr bool operator<= ( one_based_array const & rhs_ ) noexcept {
-        return std::less_equal ( lhs_.m_data.begin ( ), lhs_.m_data.begin ( ), rhs_.m_data.begin ( ) );
-    }
-    */
+    [[nodiscard]] constexpr bool operator<= ( one_based_array const & rhs_ ) noexcept { return not operator> ( rhs_ ); }
+
+    // [[nodiscard]] constexpr auto operator<=> ( one_based_array const & rhs_ ) noexcept {
+    //     return std::lexicographical_compare_three_way ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ),
+    //                                                     rhs_.m_data.end ( ) );
+    // }
 
     // Output.
 
