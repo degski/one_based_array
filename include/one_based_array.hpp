@@ -252,63 +252,61 @@ struct alignas ( std::max ( alignof ( ValueType ), 16ull ) ) one_based_array { /
     constexpr void swap ( one_based_array & other_ ) noexcept { m_data.swap ( other_ ); }
 
     private:
-    void memcpy_impl ( std::byte * to_, std::byte const * from_, std::size_t const size_ ) noexcept {
-        assert ( to_ and from_ and to_ != from_ and size_ > size_t{ 0u } ); // Check for UB, and sane memcpy usage.
-        if ( size_t const size_lower_multiple_of_32 = size_ & 0b1111'1111'1111'1111'1111'1111'1111'0000;
+    void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
+        assert ( to_ and from_ and to_ != from_ ); // Check for UB.
+        if ( constexpr size_t const size_lower_multiple_of_32 =
+                 size ( ) * sizeof ( value_type ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
              size_lower_multiple_of_32 ) {
             sax::memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_32 );
-            if ( size_t const size_remaining = size_ - size_lower_multiple_of_32; size_remaining )
+            if ( constexpr size_t const size_remaining = size ( ) * sizeof ( value_type ) - size_lower_multiple_of_32;
+                 size_remaining )
                 std::memcpy ( to_ + size_lower_multiple_of_32, from_ + size_lower_multiple_of_32, size_remaining );
             return;
         }
-        std::memcpy ( to_, from_, size_ );
+        std::memcpy ( to_, from_, size ( ) * sizeof ( value_type ) );
     }
 
     template<typename InputIt, typename OutputIt>
-    void copy_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+    void copy_impl ( InputIt first_, OutputIt d_first_ ) {
         if constexpr ( std::is_trivially_copyable<value_type>::value ) {
             memcpy_impl ( reinterpret_cast<std::byte *> ( std::addressof ( *d_first_ ) ),
-                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ), size ( ) * sizeof ( value_type ) );
+                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ) );
         }
         else {
-            std::copy ( first_, last_, d_first_ );
+            std::copy ( first_, first_ + size ( ), d_first_, size ( ) );
         }
     }
 
     template<typename InputIt, typename OutputIt>
-    void move_impl ( InputIt first_, InputIt last_, OutputIt d_first_ ) {
+    void move_impl ( InputIt first_, OutputIt d_first_ ) {
         if constexpr ( std::is_trivially_copyable<value_type>::value ) {
             memcpy_impl ( reinterpret_cast<std::byte *> ( std::addressof ( *d_first_ ) ),
-                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ), size ( ) * sizeof ( value_type ) );
+                          reinterpret_cast<std::byte const *> ( std::addressof ( *first_ ) ) );
         }
         else {
-            std::move ( first_, last_, d_first_ );
+            std::move ( first_, first_ + size ( ), d_first_, size ( ) );
         }
     }
 
     public:
-    void copy ( one_based_array const & other_ ) {
-        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
-    }
+    void copy ( one_based_array const & other_ ) { copy_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) ); }
     template<typename U>
     void copy ( one_based_array<U, Size> const & other_ ) {
-        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        copy_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) );
     }
     template<typename U>
     void copy ( std::array<U, Size> const & other_ ) {
-        copy_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        copy_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) );
     }
 
-    void move ( one_based_array && other_ ) noexcept {
-        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
-    }
+    void move ( one_based_array && other_ ) noexcept { move_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) ); }
     template<typename U>
     void move ( one_based_array<U, Size> && other_ ) noexcept {
-        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        move_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) );
     }
     template<typename U>
     void move ( std::array<U, Size> && other_ ) noexcept {
-        move_impl ( other_.m_data.cbegin ( ), other_.m_data.cend ( ), m_data.begin ( ) );
+        move_impl ( other_.m_data.cbegin ( ), m_data.begin ( ) );
     }
 
     // Global functions.
