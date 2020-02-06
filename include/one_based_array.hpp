@@ -36,25 +36,24 @@
 
 namespace sax {
 
-struct CompareThreeWay {
+struct compare_3way {
     template<typename T, typename U>
-    [[nodiscard]] int operator( ) ( T const & lhs, U const & rhs ) const noexcept {
-        if ( lhs < rhs )
+    [[nodiscard]] constexpr int operator( ) ( T const & lhs_, U const & rhs_ ) const noexcept {
+        if ( lhs_ < rhs_ )
             return -1;
-        if ( rhs < lhs )
+        if ( rhs_ < lhs_ )
             return 1;
         return 0;
     }
 };
 
-template<typename InputIt1, typename InputIt2, typename Compare = CompareThreeWay>
-[[nodiscard]] int compare_three_way ( InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2 ) {
-    for ( ; ( first1 != last1 ) && ( first2 != last2 ); ++first1, ( void ) ++first2 ) {
-        int c = Compare ( *first1, *first2 );
-        if ( c != 0 )
+template<typename InputIt1, typename InputIt2, typename Compare = compare_3way>
+[[nodiscard]] constexpr int lexicographical_compare_3way ( InputIt1 first1_, InputIt1 last1_, InputIt2 first2_,
+                                                           InputIt2 last2_ ) noexcept {
+    for ( ; ( first1_ != last1_ ) && ( first2_ != last2_ ); ++first1_, ( void ) ++first2_ )
+        if ( int c = Compare ( *first1_, *first2_ ) )
             return c;
-    }
-    return first1 == last1 ? ( ( first2 == last2 ) ? 0 : -1 ) : 1;
+    return first1_ == last1_ ? ( ( int ) ( first2_ == last2_ ) - 1 ) : 1;
 }
 
 template<typename ValueType, std::size_t Size>
@@ -278,26 +277,30 @@ struct one_based_array {
 
     // Comparison.
 
-    [[nodiscard]] constexpr bool operator== ( one_based_array const & rhs_ ) const noexcept {
-        return std::equal ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ) );
+    [[nodiscard]] constexpr friend bool operator== ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return std::equal ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ) );
     }
-    [[nodiscard]] constexpr bool operator!= ( one_based_array const & rhs_ ) const noexcept {
-        return not std::equal ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ) );
+    [[nodiscard]] constexpr friend bool operator!= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return not operator== ( rhs_ );
     }
 
-    [[nodiscard]] constexpr bool operator< ( one_based_array const & rhs_ ) noexcept {
-        return std::lexicographical_compare ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ),
-                                              std::less<value_type> ( ) );
+    [[nodiscard]] constexpr friend bool operator< ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return std::lexicographical_compare ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
+                                              rhs_.m_data.end ( ), std::less<value_type> ( ) );
     }
-    [[nodiscard]] constexpr bool operator>= ( one_based_array const & rhs_ ) noexcept { return not operator< ( rhs_ ); }
-
-    [[nodiscard]] constexpr bool operator> ( one_based_array const & rhs_ ) noexcept {
-        return std::lexicographical_compare ( m_data.begin ( ), m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ),
-                                              std::greater<value_type> ( ) );
+    [[nodiscard]] constexpr friend bool operator>= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return not operator< ( rhs_ );
     }
-    [[nodiscard]] constexpr bool operator<= ( one_based_array const & rhs_ ) noexcept { return not operator> ( rhs_ ); }
 
-    [[nodiscard]] constexpr friend auto operator<=> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return std::lexicographical_compare ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
+                                              rhs_.m_data.end ( ), std::greater<value_type> ( ) );
+    }
+    [[nodiscard]] constexpr friend bool operator<= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+        return not operator> ( rhs_ );
+    }
+
+    [[nodiscard]] constexpr friend bool operator<=> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
         return compare_three_way ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ), rhs_.m_data.end ( ) );
     }
 
