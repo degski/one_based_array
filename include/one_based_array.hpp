@@ -253,7 +253,7 @@ struct alignas ( std::max ( alignof ( ValueType ), 16ull ) ) one_based_array { /
 
     private:
     void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
-        constexpr size_t zero = 0ull;
+        constexpr size_t const zero = 0ull;
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
         if constexpr ( constexpr size_t const size_lower_multiple_of_32 =
                            ( size ( ) * sizeof ( value_type ) ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
