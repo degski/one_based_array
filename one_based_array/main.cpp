@@ -135,7 +135,7 @@ int main ( ) {
 
     std::cout << a[ 5 ] << nl;
 
-    sax::one_based_array<int, 5> b = a;
+    constexpr sax::one_based_array<int, 5> b = std::move ( a );
 
     std::cout << b[ 5 ] << ' ' << ( a == b ) << nl;
 
