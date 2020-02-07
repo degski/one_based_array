@@ -352,5 +352,5 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
     }
 
     data_type m_data;
-}; // namespace sax
+};
 } // namespace sax
