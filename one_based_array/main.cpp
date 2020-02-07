@@ -158,7 +158,7 @@ struct beap {
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
-    using python_span_type = std::tuple<value_type, value_type>;
+    using python_span_type = std::tuple<size_type, size_type>;
 
     // The i'th block consists of the i elements stored from position
     // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
