@@ -85,7 +85,7 @@ template<typename ValueType, typename RandomIt, typename Compare>
 } // namespace detail
 template<typename ValueType, typename RandomIt, typename Compare = std::less<ValueType>>
 [[nodiscard]] RandomIt it_find ( RandomIt const b_, RandomIt const e_, ValueType const & v_ ) noexcept {
-    for ( RandomIt b = b_; b <= e_; b = detail::next<ValueType, RandomIt, Compare> ( b, b - b_ + 1 ) )
+    for ( RandomIt b = b_; b <= e_; b = detail::next<ValueType, RandomIt, Compare> ( b, b - b_ ) )
         if ( b[ 0 ] == v_ )
             return b;
     return e_;

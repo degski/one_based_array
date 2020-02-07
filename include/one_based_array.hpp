@@ -272,24 +272,22 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
         }
     }
 
+    std::byte const * byte_addressof ( const_iterator it_ ) const noexcept {
+        return reinterpret_cast<std::byte const *> ( std::addressof ( *it_ ) );
+    }
+
     void copy_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull ) {
-            memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ),
-                          reinterpret_cast<std::byte const *> ( std::addressof ( *begin_ ) ) );
-        }
-        else {
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull )
+            memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
+        else
             std::copy ( begin_, end_, m_data.begin ( ) );
-        }
     }
 
     void move_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull ) {
-            memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ),
-                          reinterpret_cast<std::byte const *> ( std::addressof ( *begin_ ) ) );
-        }
-        else {
-            std::move ( begin_, end_, m_data.begin ( ) );
-        }
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull )
+            memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
+        else
+            std::move ( begin_, end_, m_data.begin ( ) )
     }
 
     public:
