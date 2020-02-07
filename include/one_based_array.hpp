@@ -58,9 +58,10 @@ template<typename InputIt1, typename InputIt2, typename Compare = compare_3way>
     return first1_ == last1_ ? ( ( int ) ( first2_ == last2_ ) - 1 ) : 1;
 }
 
-template<typename ValueType, std::size_t Size>
-struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof ( ValueType ), 16ull )
-                                                          : alignof ( ValueType ) ) one_based_array { // At least 16-byte aligned.
+template<typename ValueType, std::size_t Size, std::size_t SSEThreshold = 48ull>
+struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold
+                     ? std::max ( alignof ( ValueType ), 16ull )
+                     : alignof ( ValueType ) ) one_based_array { // At least 16-byte aligned.
     private:
     using data_type      = std::array<ValueType, Size>;
     using std_array_type = data_type;
@@ -277,17 +278,17 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
     }
 
     void copy_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull )
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= SSEThreshold )
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
         else
             std::copy ( begin_, end_, m_data.begin ( ) );
     }
 
     void move_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull )
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= SSEThreshold )
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
         else
-            std::move ( begin_, end_, m_data.begin ( ) )
+            std::move ( begin_, end_, m_data.begin ( ) );
     }
 
     public:
