@@ -30,6 +30,7 @@
 #include <sax/iostream.hpp>
 #include <initializer_list>
 #include <limits> // For Point2.
+#include <span>
 #include <type_traits>
 
 #include "one_based_array.hpp"
@@ -127,19 +128,95 @@ struct click final {
     }
 };
 
+template<typename ValueType>
+struct beap {
+
+    private:
+    using data_type = std::vector<ValueType>;
+
+    // Current height of beap. Note that height is defined as
+    // distance between consecutive layers, so for single - element
+    // beap height is 0, and for empty, we initialize it to
+    // std::numeric_limits<size_type>::max ( ).
+
+    public:
+    using value_type             = typename data_type::value_type;
+    using size_type              = typename data_type::size_type;
+    using difference_type        = typename data_type::difference_type;
+    using reference              = typename data_type::reference;
+    using const_reference        = typename data_type::const_reference;
+    using pointer                = typename data_type::pointer;
+    using const_pointer          = typename data_type::const_pointer;
+    using iterator               = typename data_type::iterator;
+    using const_iterator         = typename data_type::const_iterator;
+    using reverse_iterator       = typename data_type::reverse_iterator;
+    using const_reverse_iterator = typename data_type::const_reverse_iterator;
+
+    // The i'th block consists of the i elements stored from position
+    // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
+    // These formulas use 1 - based i, and return 1 - based array index.
+    constexpr std::span<value_type> span_1_based ( size_type i_ ) const noexcept { return { arr.data ( ) + i * i - i, i << 1 }; }
+
+    // Convert to use sane zero-based indexes both for "block" (span)
+    // and array.
+    constexpr std::span<value_type> span ( size_type i_ ) const noexcept {
+        auto ii = i_ + 1;
+        return { arr.data ( ) + i_ * i_ + ii, ii << 1 };
+    }
+
+    auto filter_up ( size_type idx_, size_type h_ ) {
+
+        auto v = arr[ idx_ ];
+
+        while ( h ) {
+
+            iters += 1;
+
+            auto s         = span ( h );
+            pointer left_p = nullptr, right_p = nullptr;
+            value_type val_l = val_r = { };
+
+            auto diff  = idx - start st_p;
+            auto end_p = span ( h - 1 );
+
+            if idx
+                != start : left_p = st_p + diff - 1 val_l = self.arr[ left_p ] if idx != end
+                    : right_p = st_p + diff val_r = self.arr[ right_p ]
+
+                                                    log.debug ( "filter_up: left_p: %s (val: %s) right_p: %s (val: %s)", left_p,
+                                                                val_l, right_p, val_r )
+
+                                                        if val_l is not None and
+                                                    v > val_l and
+                                                    ( val_r is None or val_l < val_r ) :
+                    self.arr[ left_p ],
+                           self.arr[ idx ]        = self.arr[ idx ],
+                           self.arr[ left_p ] idx = left_p h -= 1 elif val_r is not None and v > val_r : self.arr[ right_p ],
+                           self.arr[ idx ] = self.arr[ idx ], self.arr[ right_p ] idx = right_p h -= 1 else : return
+        }
+    }
+
+    // If last array element as at the span end, then adding
+    // new element grows beap height.
+    auto insert ( value_type v_ ) {
+        height += std::addressof ( arr.back ( ) ) == std::addressof ( span ( height ).back ( ) );
+        arr.push_back ( v_ );
+        return filter_up ( arr.size ( ) - 1ull, height );
+    }
+
+    data_type arr;
+    size_type height = std::numeric_limits<size_type>::max ( ), iters = 0ull;
+};
+
 int main ( ) {
 
-    sax::based_array<int, 8145> a{ };
+    beap<int, 32> a;
 
     int c = 0;
-    for ( auto & e : a )
+    for ( auto & e : a.arr )
         e = ++c;
 
-    std::cout << a << nl;
-
-    sax::based_array<int, 8145> b = a;
-
-    std::cout << b << nl;
+    std::cout << a.arr << nl;
 
     return EXIT_SUCCESS;
 }
