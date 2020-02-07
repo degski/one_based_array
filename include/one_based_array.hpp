@@ -78,7 +78,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
-    explicit constexpr one_based_array ( ) noexcept = default;
+    explicit one_based_array ( ) noexcept = default;
 
     // one_based_array's.
 
