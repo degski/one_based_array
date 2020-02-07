@@ -251,13 +251,20 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
     void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
         constexpr size_t const zero = 0ull;
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
-        if constexpr ( constexpr std::size_t const size_lower_multiple_of_32 =
+        if constexpr ( constexpr std::size_t const size_lower_multiple_of_16 =
                            sizeof ( one_based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
-                       size_lower_multiple_of_32 > zero ) {
-            sax::memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_32 );
-            if constexpr ( constexpr std::size_t const size_remaining = sizeof ( one_based_array ) - size_lower_multiple_of_32;
+                       size_lower_multiple_of_16 > zero ) {
+            if constexpr ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) {
+                memcpy_sse_16_impl ( to_, from_ );
+                if constexpr ( size_lower_multiple_of_16 & 0b1111'1111'1111'1111'1111'1111'1110'0000 )
+                    memcpy_sse_32_impl ( to_ + 16ll, from_ + 16ll, size_lower_multiple_of_16 - 16ll );
+            }
+            else {
+                memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_16 );
+            }
+            if constexpr ( constexpr std::size_t const size_remaining = sizeof ( one_based_array ) - size_lower_multiple_of_16;
                            size_remaining > zero )
-                std::memcpy ( to_ + size_lower_multiple_of_32, from_ + size_lower_multiple_of_32, size_remaining );
+                std::memcpy ( to_ + size_lower_multiple_of_16, from_ + size_lower_multiple_of_16, size_remaining );
             return;
         }
         else {
@@ -266,7 +273,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
     }
 
     void copy_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 32ull ) {
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull ) {
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ),
                           reinterpret_cast<std::byte const *> ( std::addressof ( *begin_ ) ) );
         }
@@ -276,7 +283,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= 32ull ? std::max ( alignof (
     }
 
     void move_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 32ull ) {
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= 48ull ) {
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ),
                           reinterpret_cast<std::byte const *> ( std::addressof ( *begin_ ) ) );
         }
