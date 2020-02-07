@@ -59,9 +59,8 @@ template<typename InputIt1, typename InputIt2, typename Compare = compare_3way>
 }
 
 template<typename ValueType, std::size_t Size, std::size_t SSEThreshold = 48ull>
-struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold
-                     ? std::max ( alignof ( ValueType ), 16ull )
-                     : alignof ( ValueType ) ) one_based_array { // At least 16-byte aligned.
+struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( alignof ( ValueType ), 16ull )
+                                                                 : alignof ( ValueType ) ) one_based_array {
     private:
     using data_type      = std::array<ValueType, Size>;
     using std_array_type = data_type;
@@ -185,7 +184,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold
     // data ( ), allows interaction with STL.
 
     [[nodiscard]] constexpr const_pointer data ( ) const noexcept { return m_data.data ( ); }
-    [[nodiscard]] constexpr pointer data ( ) noexcept { return const_cast<pointer> ( std::as_const ( *this ).data ( ) ); }
+    [[nodiscard]] constexpr pointer data ( ) noexcept { return m_data.data ( ); }
 
     // Explicitely access data as zero- or one-based, for use in application that uses b1, or switches between them..
 
@@ -216,10 +215,10 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold
     // Access.
 
     [[nodiscard]] const_reference front ( ) const noexcept { return m_data.front ( ); }
-    [[nodiscard]] reference front ( ) noexcept { return const_cast<reference> ( std::as_const ( *this ).front ( ) ); }
+    [[nodiscard]] reference front ( ) noexcept { return m_data.front ( ); }
 
     [[nodiscard]] const_reference back ( ) const noexcept { return m_data.back ( ); }
-    [[nodiscard]] reference back ( ) noexcept { return const_cast<reference> ( std::as_const ( *this ).back ( ) ); }
+    [[nodiscard]] reference back ( ) noexcept { return m_data.back ( ); }
 
     [[nodiscard]] const_reference at ( size_type const i_ ) const {
         if ( 0 < i_ and i_ <= size ( ) )
