@@ -129,15 +129,17 @@ struct click final {
 
 int main ( ) {
 
-    sax::one_based_array<int, 45> a{ }; // 35 * 4 = 140
+    sax::based_array<int, 8145> a{ };
 
-    a.get<2ll> ( 5 ) = 159;
+    int c = 0;
+    for ( auto & e : a )
+        e = ++c;
 
-    // std::cout << a[ 5 ] << nl;
+    std::cout << a << nl;
 
-    sax::one_based_array<int, 45> b = std::move ( a );
+    sax::based_array<int, 8145> b = a;
 
-    std::cout << b.get<2ll> ( 5 ) << ' ' << ( a == b ) << nl;
+    std::cout << b << nl;
 
     return EXIT_SUCCESS;
 }

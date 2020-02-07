@@ -60,7 +60,7 @@ template<typename InputIt1, typename InputIt2, typename Compare = compare_3way>
 
 template<typename ValueType, std::size_t Size, std::size_t SSEThreshold = 48ull>
 struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( alignof ( ValueType ), 16ull )
-                                                                 : alignof ( ValueType ) ) one_based_array {
+                                                                 : alignof ( ValueType ) ) based_array {
     private:
     using data_type      = std::array<ValueType, Size>;
     using std_array_type = data_type;
@@ -78,54 +78,54 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
-    explicit one_based_array ( ) noexcept = default;
+    explicit based_array ( ) noexcept = default;
 
-    // one_based_array's.
+    // based_array's.
 
-    one_based_array ( one_based_array const & other_ ) { copy ( other_ ); }
-    one_based_array ( one_based_array && other_ ) noexcept { move ( std::move ( other_ ) ); }
+    based_array ( based_array const & other_ ) { copy ( other_ ); }
+    based_array ( based_array && other_ ) noexcept { move ( std::move ( other_ ) ); }
 
     // Convertible types.
 
     template<typename U>
-    one_based_array ( one_based_array<U, Size> const & other_ ) {
+    based_array ( based_array<U, Size> const & other_ ) {
         copy ( other_ );
     }
     template<typename U>
-    one_based_array ( one_based_array<U, Size> && other_ ) noexcept {
+    based_array ( based_array<U, Size> && other_ ) noexcept {
         move ( std::move ( other_ ) );
     }
 
     // std::array's.
 
-    one_based_array ( std_array_type const & other_ ) { copy ( other_ ); }
-    one_based_array ( std_array_type && other_ ) noexcept { move ( std::move ( other_ ) ); }
+    based_array ( std_array_type const & other_ ) { copy ( other_ ); }
+    based_array ( std_array_type && other_ ) noexcept { move ( std::move ( other_ ) ); }
 
     // Convertible types.
 
     template<typename U>
-    one_based_array ( std::array<U, Size> const & other_ ) {
+    based_array ( std::array<U, Size> const & other_ ) {
         copy ( other_ );
     }
     template<typename U>
-    one_based_array ( std::array<U, Size> && other_ ) noexcept {
+    based_array ( std::array<U, Size> && other_ ) noexcept {
         move ( std::move ( other_ ) );
     }
 
     // std::initializer_list.
 
-    one_based_array ( std::initializer_list<value_type> list_ ) noexcept {
+    based_array ( std::initializer_list<value_type> list_ ) noexcept {
         std::copy ( std::cbegin ( list_ ), std::cend ( list_ ), begin ( ) );
     }
 
     // Assignment.
 
-    [[maybe_unused]] one_based_array & operator= ( one_based_array const & rhs_ ) {
+    [[maybe_unused]] based_array & operator= ( based_array const & rhs_ ) {
         if ( std::addressof ( rhs_ ) != this )
             copy ( rhs_ );
         return *this;
     }
-    [[maybe_unused]] one_based_array & operator= ( one_based_array && rhs_ ) noexcept {
+    [[maybe_unused]] based_array & operator= ( based_array && rhs_ ) noexcept {
         if ( std::addressof ( rhs_ ) != this )
             move ( std::move ( rhs_ ) );
         return *this;
@@ -134,13 +134,13 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     // Convertible types.
 
     template<typename U>
-    [[maybe_unused]] one_based_array & operator= ( one_based_array<U, Size> const & rhs_ ) {
+    [[maybe_unused]] based_array & operator= ( based_array<U, Size> const & rhs_ ) {
         if ( std::addressof ( rhs_ ) != this )
             copy ( rhs_ );
         return *this;
     }
     template<typename U>
-    [[maybe_unused]] one_based_array & operator= ( one_based_array<U, Size> && rhs_ ) noexcept {
+    [[maybe_unused]] based_array & operator= ( based_array<U, Size> && rhs_ ) noexcept {
         if ( std::addressof ( rhs_ ) != this )
             move ( std::move ( rhs_ ) );
         return *this;
@@ -148,12 +148,12 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
 
     // Assign from std::array.
 
-    [[maybe_unused]] one_based_array & operator= ( std_array_type const & rhs_ ) {
+    [[maybe_unused]] based_array & operator= ( std_array_type const & rhs_ ) {
         if ( std::addressof ( rhs_ ) != this )
             copy ( rhs_ );
         return *this;
     }
-    [[maybe_unused]] one_based_array & operator= ( std_array_type && rhs_ ) noexcept {
+    [[maybe_unused]] based_array & operator= ( std_array_type && rhs_ ) noexcept {
         if ( std::addressof ( rhs_ ) != this )
             move ( std::move ( rhs_ ) );
         return *this;
@@ -162,13 +162,13 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     // Convertible types.
 
     template<typename U>
-    [[maybe_unused]] one_based_array & operator= ( std::array<U, Size> const & rhs_ ) {
+    [[maybe_unused]] based_array & operator= ( std::array<U, Size> const & rhs_ ) {
         if ( std::addressof ( rhs_ ) != this )
             copy ( rhs_ );
         return *this;
     }
     template<typename U>
-    [[maybe_unused]] one_based_array & operator= ( std::array<U, Size> && rhs_ ) noexcept {
+    [[maybe_unused]] based_array & operator= ( std::array<U, Size> && rhs_ ) noexcept {
         if ( std::addressof ( rhs_ ) != this )
             move ( std::move ( rhs_ ) );
         return *this;
@@ -176,7 +176,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
 
     // std::initializer_list.
 
-    [[maybe_unused]] one_based_array & operator= ( std::initializer_list<value_type> list_ ) {
+    [[maybe_unused]] based_array & operator= ( std::initializer_list<value_type> list_ ) {
         std::copy ( std::cbegin ( list_ ), std::cend ( list_ ), begin ( ) );
         return *this;
     }
@@ -226,7 +226,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
         if ( Base < i_ and i_ <= Base + size ( ) )
             return get<Base> ( i_ );
         else
-            throw std::runtime_error ( "one_based_array: index out of bounds" );
+            throw std::runtime_error ( "based_array: index out of bounds" );
     }
     template<difference_type Base>
     [[nodiscard]] reference at ( size_type const i_ ) {
@@ -257,30 +257,30 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     // STL-functionality.
 
     void fill ( value_type const & value_ ) { m_data.fill ( value_ ); }
-    void swap ( one_based_array & other_ ) noexcept { m_data.swap ( other_ ); }
+    void swap ( based_array & other_ ) noexcept { m_data.swap ( other_ ); }
 
     private:
     void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
         constexpr size_t const zero = 0ull;
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
         if constexpr ( constexpr size_type const size_lower_multiple_of_16 =
-                           sizeof ( one_based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
+                           sizeof ( based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
                        size_lower_multiple_of_16 > zero ) {
-            if constexpr ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) {
+            if constexpr ( ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) > zero ) {
                 memcpy_sse_16_impl ( to_, from_ );
-                if constexpr ( size_lower_multiple_of_16 & 0b1111'1111'1111'1111'1111'1111'1110'0000 )
+                if constexpr ( ( size_lower_multiple_of_16 & 0b1111'1111'1111'1111'1111'1111'1110'0000 ) > zero )
                     memcpy_sse_32_impl ( to_ + 16ll, from_ + 16ll, size_lower_multiple_of_16 - 16ll );
             }
             else {
                 memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_16 );
             }
-            if constexpr ( constexpr size_type const size_remaining = sizeof ( one_based_array ) - size_lower_multiple_of_16;
+            if constexpr ( constexpr size_type const size_remaining = sizeof ( based_array ) - size_lower_multiple_of_16;
                            size_remaining > zero )
                 std::memcpy ( to_ + size_lower_multiple_of_16, from_ + size_lower_multiple_of_16, size_remaining );
             return;
         }
         else {
-            std::memcpy ( to_, from_, sizeof ( one_based_array ) );
+            std::memcpy ( to_, from_, sizeof ( based_array ) );
         }
     }
 
@@ -289,23 +289,23 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     }
 
     void copy_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= SSEThreshold )
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( based_array ) >= SSEThreshold )
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
         else
             std::copy ( begin_, end_, m_data.begin ( ) );
     }
 
     void move_impl ( const_iterator begin_, const_iterator end_ ) {
-        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( one_based_array ) >= SSEThreshold )
+        if constexpr ( std::is_trivially_copyable<value_type>::value and sizeof ( based_array ) >= SSEThreshold )
             memcpy_impl ( reinterpret_cast<std::byte *> ( m_data.data ( ) ), byte_addressof ( begin_ ) );
         else
             std::move ( begin_, end_, m_data.begin ( ) );
     }
 
     public:
-    void copy ( one_based_array const & other_ ) { copy_impl ( other_.cbegin ( ), other_.cend ( ) ); }
+    void copy ( based_array const & other_ ) { copy_impl ( other_.cbegin ( ), other_.cend ( ) ); }
     template<typename U>
-    void copy ( one_based_array<U, Size> const & other_ ) {
+    void copy ( based_array<U, Size> const & other_ ) {
         copy_impl ( other_.cbegin ( ), other_.cend ( ) );
     }
     template<typename U>
@@ -313,9 +313,9 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
         copy_impl ( other_.cbegin ( ), other_.cend ( ) );
     }
 
-    void move ( one_based_array && other_ ) noexcept { move_impl ( other_.cbegin ( ), other_.cend ( ) ); }
+    void move ( based_array && other_ ) noexcept { move_impl ( other_.cbegin ( ), other_.cend ( ) ); }
     template<typename U>
-    void move ( one_based_array<U, Size> && other_ ) noexcept {
+    void move ( based_array<U, Size> && other_ ) noexcept {
         move_impl ( other_.cbegin ( ), other_.cend ( ) );
     }
     template<typename U>
@@ -327,30 +327,30 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
 
     // Comparison.
 
-    [[nodiscard]] constexpr friend bool operator== ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator== ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return std::equal ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ) );
     }
-    [[nodiscard]] constexpr friend bool operator!= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator!= ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return not operator== ( rhs_ );
     }
 
-    [[nodiscard]] constexpr friend bool operator< ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator< ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return std::lexicographical_compare ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
                                               rhs_.m_data.end ( ), std::less<value_type> ( ) );
     }
-    [[nodiscard]] constexpr friend bool operator>= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator>= ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return not operator< ( rhs_ );
     }
 
-    [[nodiscard]] constexpr friend bool operator> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator> ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return std::lexicographical_compare ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
                                               rhs_.m_data.end ( ), std::greater<value_type> ( ) );
     }
-    [[nodiscard]] constexpr friend bool operator<= ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator<= ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return not operator> ( rhs_ );
     }
 
-    [[nodiscard]] constexpr friend bool operator<=> ( one_based_array const & lhs_, one_based_array const & rhs_ ) noexcept {
+    [[nodiscard]] constexpr friend bool operator<=> ( based_array const & lhs_, based_array const & rhs_ ) noexcept {
         return lexicographical_compare_3way ( lhs_.m_data.begin ( ), lhs_.m_data.end ( ), rhs_.m_data.begin ( ),
                                               rhs_.m_data.end ( ) );
     }
@@ -358,7 +358,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     // Output.
 
     template<typename Stream>
-    [[maybe_unused]] friend Stream & operator<< ( Stream & out_, one_based_array const & m_ ) noexcept {
+    [[maybe_unused]] friend Stream & operator<< ( Stream & out_, based_array const & m_ ) noexcept {
         std::for_each ( m_.cbegin ( ), m_.cend ( ), [ &out_ ] ( auto & e ) { out_ << e << sp; } );
         return out_;
     }
