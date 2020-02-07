@@ -146,8 +146,8 @@ struct beap {
 
     public:
     using value_type             = typename data_type::value_type;
-    using size_type              = typename data_type::size_type;
-    using difference_type        = typename data_type::difference_type;
+    using size_type              = int;
+    using difference_type        = int;
     using reference              = typename data_type::reference;
     using const_reference        = typename data_type::const_reference;
     using pointer                = typename data_type::pointer;
@@ -177,7 +177,9 @@ struct beap {
         return { i - 1, i + 2 * i_ - 1 };
     }
 
-    static constexpr std::size_t zero_v = 0ull, one_v = 1ull;
+    static constexpr size_type zero_v = { 0 }, one_v = { 1 };
+
+    [[nodiscard]] size_type size ( ) const noexcept { return static_cast<int> ( arr.size ( ) ); }
 
     // Search for element x in beap. If not found, return None.
     // Otherwise, return tuple of (idx, height) with array index
@@ -210,7 +212,7 @@ struct beap {
                 // this is not possible (because we are on the diagonal) then move left and down one_v position
                 // each.
                 // => less, move right along the row, or up and right
-                if ( idx == arr.size ( ) - 1 ) {
+                if ( idx == size ( ) - 1 ) {
                     size_type diff = idx - start;
                     h -= 1;
                     auto [ start, end ] = python_span ( h );
@@ -220,7 +222,7 @@ struct beap {
                 size_type diff              = idx - start;
                 auto [ new_start, new_end ] = python_span ( h + 1 );
                 size_type new_idx           = new_start + diff + 1;
-                if ( new_idx < arr.size ( ) ) {
+                if ( new_idx < size ( ) ) {
                     h += 1;
                     start = new_start;
                     end   = new_end;
@@ -281,10 +283,10 @@ struct beap {
             size_type diff       = index_ - start;
             auto [ st_c, end_c ] = python_span ( h_ + one_v );
             size_type left_c = st_c + diff, right_c = zero_v, val_l = zero_v, val_r = zero_v;
-            if ( left_c < arr.size ( ) ) {
+            if ( left_c < size ( ) ) {
                 val_l   = arr[ left_c ];
                 right_c = left_c + one_v;
-                if ( right_c >= arr.size ( ) )
+                if ( right_c >= size ( ) )
                     right_c = zero_v;
                 else
                     val_r = arr[ right_c ];
@@ -314,7 +316,7 @@ struct beap {
     // new element grows beap height.
     [[nodiscard]] size_type insert ( value_type const & v_ ) {
         auto [ start, end ] = python_span ( height );
-        size_type index     = arr.size ( ) - one_v;
+        size_type index     = size ( ) - one_v;
         height += index == end;
         arr.push_back ( v_ );
         return filter_up ( index, height );
