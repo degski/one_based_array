@@ -265,17 +265,17 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
         if constexpr ( constexpr size_type const size_lower_multiple_of_16 =
                            sizeof ( based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
-                       size_lower_multiple_of_16 > zero ) {
-            if constexpr ( ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) > zero ) {
+                       size_lower_multiple_of_16 != zero ) {
+            if constexpr ( ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) != zero ) {
                 memcpy_sse_16_impl ( to_, from_ );
-                if constexpr ( ( size_lower_multiple_of_16 & 0b1111'1111'1111'1111'1111'1111'1110'0000 ) > zero )
+                if constexpr ( ( size_lower_multiple_of_16 & 0b1111'1111'1111'1111'1111'1111'1110'0000 ) != zero )
                     memcpy_sse_32_impl ( to_ + 16ll, from_ + 16ll, size_lower_multiple_of_16 - 16ll );
             }
             else {
                 memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_16 );
             }
             if constexpr ( constexpr size_type const size_remaining = sizeof ( based_array ) - size_lower_multiple_of_16;
-                           size_remaining > zero )
+                           size_remaining != zero )
                 std::memcpy ( to_ + size_lower_multiple_of_16, from_ + size_lower_multiple_of_16, size_remaining );
             return;
         }
