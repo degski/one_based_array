@@ -31,9 +31,14 @@
 #include <initializer_list>
 #include <limits> // For Point2.
 #include <span>
+#include <tuple>
 #include <type_traits>
 
 #include "one_based_array.hpp"
+
+#define ever                                                                                                                       \
+    ;                                                                                                                              \
+    ;
 
 template<typename T>
 struct Point2 {
@@ -128,7 +133,7 @@ struct click final {
     }
 };
 
-template<typename ValueType>
+template<typename ValueType, std::size_t Base = 1>
 struct beap {
 
     private:
@@ -152,71 +157,190 @@ struct beap {
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
+    using python_span_type = std::tuple<value_type, value_type>;
+
     // The i'th block consists of the i elements stored from position
     // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
     // These formulas use 1 - based i, and return 1 - based array index.
-    constexpr std::span<value_type> span_1_based ( size_type i_ ) const noexcept { return { arr.data ( ) + i * i - i, i << 1 }; }
-
-    // Convert to use sane zero-based indexes both for "block" (span)
-    // and array.
-    constexpr std::span<value_type> span ( size_type i_ ) const noexcept {
-        auto ii = i_ + 1;
-        return { arr.data ( ) + i_ * i_ + ii, ii << 1 };
+    template<size_type B = Base>
+    constexpr python_span_type python_span_1_based ( size_type i_ ) const noexcept {
+        auto i = i_ * i_ - i_ - B;
+        return { i, i + 2 * i_ };
     }
 
-    auto filter_up ( size_type idx_, size_type h_ ) {
+    // Convert to use sane zero_v-based indexes both for "block" (span)
+    // and array.
+    template<size_type B = Base>
+    constexpr python_span_type python_span ( size_type i_ ) const noexcept {
+        ++i_;
+        auto i = i_ * i_ - i_ - B;
+        return { i - 1, i + 2 * i_ - 1 };
+    }
 
-        auto v = arr[ idx_ ];
+    static constexpr std::size_t zero_v = 0ull, one_v = 1ull;
 
-        while ( h ) {
-
+    // Search for element x in beap. If not found, return None.
+    // Otherwise, return tuple of (idx, height) with array index
+    // and span height at which the element was found. (Span height
+    // is returned because it may be needed for some further
+    // operations, to avoid square root operation which is otherwise
+    // needed to convert array index to it.)
+    [[nodiscard]] python_span_type search ( value_type const & x ) const noexcept {
+        size_type h         = height;
+        auto [ start, end ] = span ( h );
+        size_type idx       = start;
+        for ( ever ) {
             iters += 1;
+            if ( x > arr[ idx ] ) {
+                // If x is less than the element under consideration, move left
+                // one_v position along the row.
+                // These rules are given for weirdly mirrored matrix. They're also
+                // for min beap, we so far implement max beap.
+                // So: if x is greater than, and move up along the column.
+                if ( idx == end )
+                    return { zero_v, zero_v };
+                size_type diff = idx - start;
+                h -= 1;
+                auto [ start, end ] = python_span ( h );
+                idx                 = start + diff;
+                continue;
+            }
+            else if ( x < arr[ idx ] ) {
+                // If x exceeds the element, either move down one_v position along the column or if
+                // this is not possible (because we are on the diagonal) then move left and down one_v position
+                // each.
+                // => less, move right along the row, or up and right
+                if ( idx == arr.size ( ) - 1 ) {
+                    size_type diff = idx - start;
+                    h -= 1;
+                    auto [ start, end ] = python_span ( h );
+                    idx                 = start + diff;
+                    continue;
+                }
+                size_type diff              = idx - start;
+                auto [ new_start, new_end ] = python_span ( h + 1 );
+                size_type new_idx           = new_start + diff + 1;
+                if ( new_idx < arr.size ( ) ) {
+                    h += 1;
+                    start = new_start;
+                    end   = new_end;
+                    idx   = new_idx;
+                    continue;
+                }
+                if ( idx == end )
+                    return { zero_v, zero_v };
+                idx += 1;
+                continue;
+            }
+            else {
+                return { idx, h };
+            }
+        }
+    }
 
-            auto s         = span ( h );
-            pointer left_p = nullptr, right_p = nullptr;
-            value_type val_l = val_r = { };
+    // Percolate an element up the beap.
+    [[nodiscard]] size_type filter_up ( size_type index_, size_type h_ ) noexcept {
+        value_type v = arr[ index_ ];
+        while ( h_ ) {
+            iters += 1;
+            auto [ start, end ] = python_span ( h_ );
+            size_type left_p = zero_v, right_p = zero_v, val_l = zero_v, val_r = zero_v;
+            size_type diff       = index_ - start;
+            auto [ st_p, end_p ] = python_span ( h_ - one_v );
+            if ( index_ != start ) {
+                left_p = st_p + diff - 1;
+                val_l  = arr[ left_p ];
+            }
+            if ( index_ != end ) {
+                right_p = st_p + diff;
+                val_r   = arr[ right_p ];
+            }
+            if ( val_l != zero_v and v > val_l and ( val_r == zero_v or val_l < val_r ) ) {
+                std::swap ( arr[ v ], arr[ left_p ] );
+                index_ = left_p;
+                h_ -= 1;
+            }
+            else if ( val_r != zero_v and v > val_r ) {
+                std::swap ( arr[ v ], arr[ right_p ] );
+                index_ = right_p;
+                h_ -= 1;
+            }
+            else {
+                return index_;
+            }
+        }
+        assert ( index_ == zero_v );
+        return index_;
+    }
 
-            auto diff  = idx - start st_p;
-            auto end_p = span ( h - 1 );
-
-            if idx
-                != start : left_p = st_p + diff - 1 val_l = self.arr[ left_p ] if idx != end
-                    : right_p = st_p + diff val_r = self.arr[ right_p ]
-
-                                                    log.debug ( "filter_up: left_p: %s (val: %s) right_p: %s (val: %s)", left_p,
-                                                                val_l, right_p, val_r )
-
-                                                        if val_l is not None and
-                                                    v > val_l and
-                                                    ( val_r is None or val_l < val_r ) :
-                    self.arr[ left_p ],
-                           self.arr[ idx ]        = self.arr[ idx ],
-                           self.arr[ left_p ] idx = left_p h -= 1 elif val_r is not None and v > val_r : self.arr[ right_p ],
-                           self.arr[ idx ] = self.arr[ idx ], self.arr[ right_p ] idx = right_p h -= 1 else : return
+    // Percolate an element down the beap.
+    [[nodiscard]] size_type filter_down ( size_type index_, size_type h_ ) noexcept {
+        while ( h_ < height - one_v ) {
+            iters += 1;
+            auto [ start, end ]  = python_span ( h_ );
+            size_type diff       = index_ - start;
+            auto [ st_c, end_c ] = python_span ( h_ + one_v );
+            size_type left_c = st_c + diff, right_c = zero_v, val_l = zero_v, val_r = zero_v;
+            if ( left_c < arr.size ( ) ) {
+                val_l   = arr[ left_c ];
+                right_c = left_c + one_v;
+                if ( right_c >= arr.size ( ) )
+                    right_c = zero_v;
+                else
+                    val_r = arr[ right_c ];
+            }
+            else {
+                left_c = zero_v;
+            }
+            size_type v = arr[ index_ ];
+            if ( val_l != zero_v and v < val_l and ( val_r == zero_v or val_l > val_r ) ) {
+                std::swap ( arr[ v ], arr[ left_c ] );
+                index_ = left_c;
+                h_ += 1;
+            }
+            else if ( val_r != zero_v and v < val_r ) {
+                std::swap ( arr[ v ], arr[ right_c ] );
+                index_ = right_c;
+                h_ += 1;
+            }
+            else {
+                return index_;
+            }
+            return index_;
         }
     }
 
     // If last array element as at the span end, then adding
     // new element grows beap height.
-    auto insert ( value_type v_ ) {
-        height += std::addressof ( arr.back ( ) ) == std::addressof ( span ( height ).back ( ) );
+    [[nodiscard]] size_type insert ( value_type const & v_ ) {
+        auto [ start, end ] = python_span ( height );
+        size_type index     = arr.size ( ) - one_v;
+        height += index == end;
         arr.push_back ( v_ );
-        return filter_up ( arr.size ( ) - 1ull, height );
+        return filter_up ( index, height );
+    }
+
+    // Output.
+
+    template<typename Stream>
+    [[maybe_unused]] friend Stream & operator<< ( Stream & out_, beap const & beap_ ) noexcept {
+        std::for_each ( beap_.arr.cbegin ( ), beap_.arr.cend ( ), [ &out_ ] ( auto & e ) { out_ << e << sp; } );
+        return out_;
     }
 
     data_type arr;
-    size_type height = std::numeric_limits<size_type>::max ( ), iters = 0ull;
+    size_type height = std::numeric_limits<size_type>::max ( ), iters = zero_v;
 };
 
 int main ( ) {
 
-    beap<int, 32> a;
+    beap<int> a;
 
     int c = 0;
     for ( auto & e : a.arr )
         e = ++c;
 
-    std::cout << a.arr << nl;
+    std::cout << a << nl;
 
     return EXIT_SUCCESS;
 }

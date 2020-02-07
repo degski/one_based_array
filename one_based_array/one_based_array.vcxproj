@@ -222,6 +222,8 @@
     <ClInclude Include="..\include\one_based_array.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\beap\beap.py" />
+    <None Include="..\..\beap\test_beap.py" />
     <None Include="..\LICENSE.md" />
     <None Include="..\README.md" />
   </ItemGroup>
