@@ -200,25 +200,25 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     // Iterators.
 
     public:
-    [[nodiscard]] const_iterator begin ( ) const noexcept { return m_data.begin ( ); }
+    [[nodiscard]] iterator begin ( ) noexcept { return m_data.begin ( ); }
     [[nodiscard]] const_iterator cbegin ( ) const noexcept { return m_data.begin ( ); }
 
-    [[nodiscard]] const_iterator end ( ) const noexcept { return m_data.end ( ); }
+    [[nodiscard]] iterator end ( ) noexcept { return m_data.end ( ); }
     [[nodiscard]] const_iterator cend ( ) const noexcept { return m_data.end ( ); }
 
-    [[nodiscard]] const_iterator rbegin ( ) const noexcept { return m_data.rbegin ( ); }
+    [[nodiscard]] iterator rbegin ( ) noexcept { return m_data.rbegin ( ); }
     [[nodiscard]] const_iterator crbegin ( ) const noexcept { return m_data.rbegin ( ); }
 
-    [[nodiscard]] const_iterator rend ( ) const noexcept { return m_data.rend ( ); }
+    [[nodiscard]] iterator rend ( ) noexcept { return m_data.rend ( ); }
     [[nodiscard]] const_iterator crend ( ) const noexcept { return m_data.rend ( ); }
 
     // Access.
 
-    [[nodiscard]] const_reference front ( ) const noexcept { return m_data.front ( ); }
     [[nodiscard]] reference front ( ) noexcept { return m_data.front ( ); }
+    [[nodiscard]] const_reference front ( ) const noexcept { return m_data.front ( ); }
 
-    [[nodiscard]] const_reference back ( ) const noexcept { return m_data.back ( ); }
     [[nodiscard]] reference back ( ) noexcept { return m_data.back ( ); }
+    [[nodiscard]] const_reference back ( ) const noexcept { return m_data.back ( ); }
 
     [[nodiscard]] const_reference at ( size_type const i_ ) const {
         if ( 0 < i_ and i_ <= size ( ) )

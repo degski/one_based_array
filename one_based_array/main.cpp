@@ -129,7 +129,7 @@ struct click final {
 
 int main ( ) {
 
-    constexpr sax::one_based_array<int, 45> a{ }; // 35 * 4 = 140
+    sax::one_based_array<int, 45> a{ }; // 35 * 4 = 140
 
     a[ 5 ] = 159;
 
