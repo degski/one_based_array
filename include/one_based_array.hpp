@@ -261,7 +261,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
 
     private:
     void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
-        constexpr size_t const zero = 0ull;
+        constexpr size_type const zero = 0ull;
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
         if constexpr ( constexpr size_type const size_lower_multiple_of_16 =
                            sizeof ( based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
