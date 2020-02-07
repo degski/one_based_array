@@ -172,7 +172,7 @@ struct beap {
     // and array.
     constexpr python_span_type span ( size_type i_ ) const noexcept {
         auto [ start, end ] = span_1_based ( ++i_ );
-        return { std::move ( start ) - 1, std::move ( end ) - 1 };
+        return { start - 1, end - 1 };
     }
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 };
@@ -312,11 +312,11 @@ struct beap {
     // new element grows beap height.
     [[nodiscard]] size_type insert ( value_type const & v_ ) {
         auto [ start, end ] = span ( height );
-        std::cout << start << ' ' << end << nl;
-        size_type index = size ( ) - one_v;
-        height += index == end;
+        // If last array element as at the span end, then adding
+        // new element grows beap height.
+        height += ( end_of_storage ( ) == end );
         arr.push_back ( v_ );
-        return filter_up ( index, height );
+        return filter_up ( end_of_storage ( ), height );
     }
 
     // Remove element with array index idx at the beap span of height h.
@@ -347,6 +347,7 @@ struct beap {
     }
 
     [[nodiscard]] size_type size ( ) const noexcept { return static_cast<int> ( arr.size ( ) ); }
+    [[nodiscard]] size_type end_of_storage ( ) const noexcept { return static_cast<int> ( arr.size ( ) ) - one_v; }
 
     // Iterators.
 
