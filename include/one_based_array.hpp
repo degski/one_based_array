@@ -188,13 +188,14 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
 
     // Explicitely access data as zero- or one-based, for use in application that uses b1, or switches between them..
 
-    [[nodiscard]] constexpr const_pointer data_base_zero ( ) const noexcept { return data ( ); }
-    [[nodiscard]] constexpr pointer data_base_zero ( ) noexcept {
-        return const_cast<pointer> ( std::as_const ( *this ).data_base_zero ( ) );
+    private:
+    template<difference_type Base>
+    [[nodiscard]] constexpr const_pointer data_base ( ) const noexcept {
+        return data ( ) - Base;
     }
-    [[nodiscard]] constexpr const_pointer data_base_one ( ) const noexcept { return data_base_zero ( ) - 1; }
-    [[nodiscard]] constexpr pointer data_base_one ( ) noexcept {
-        return const_cast<pointer> ( std::as_const ( *this ).data_base_one ( ) );
+    template<difference_type Base>
+    [[nodiscard]] constexpr pointer data_base ( ) noexcept {
+        return data ( ) - Base;
     }
 
     // Iterators.
@@ -220,27 +221,38 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     [[nodiscard]] reference back ( ) noexcept { return m_data.back ( ); }
     [[nodiscard]] const_reference back ( ) const noexcept { return m_data.back ( ); }
 
+    template<difference_type Base>
     [[nodiscard]] const_reference at ( size_type const i_ ) const {
-        if ( 0 < i_ and i_ <= size ( ) )
-            return data_base_one ( )[ i_ ];
+        if ( Base < i_ and i_ <= Base + size ( ) )
+            return get<Base> ( i_ );
         else
             throw std::runtime_error ( "one_based_array: index out of bounds" );
     }
-    [[nodiscard]] reference at ( size_type const i_ ) { return const_cast<reference> ( std::as_const ( *this ).at ( i_ ) ); }
-
-    [[nodiscard]] constexpr const_reference operator[] ( size_type const i_ ) const noexcept {
-        assert ( 0 < i_ and i_ <= size ( ) );
-        return data_base_one ( )[ i_ ];
+    template<difference_type Base>
+    [[nodiscard]] reference at ( size_type const i_ ) {
+        return const_cast<reference> ( std::as_const ( *this ).at<Base> ( i_ ) );
     }
-    [[nodiscard]] constexpr reference operator[] ( size_type const i_ ) noexcept {
-        return const_cast<reference> ( std::as_const ( *this ).operator[] ( i_ ) );
+
+    // Subscript operator, only in base = 0.
+    [[nodiscard]] constexpr const_reference operator[] ( size_type const i_ ) const noexcept { return m_data[ i_ ]; }
+    [[nodiscard]] constexpr reference operator[] ( size_type const i_ ) noexcept { return m_data[ i_ ]; }
+
+    template<difference_type Base>
+    [[nodiscard]] constexpr const_reference get ( size_type const i_ ) const noexcept {
+        assert ( Base < i_ and i_ <= Base + size ( ) );
+        return data_base<Base> ( )[ i_ ];
+    }
+    template<difference_type Base>
+    [[nodiscard]] constexpr reference get ( size_type const i_ ) noexcept {
+        assert ( Base < i_ and i_ <= Base + size ( ) );
+        return data_base<Base> ( )[ i_ ];
     }
 
     // Sizes.
 
-    [[nodiscard]] static constexpr std::size_t capacity ( ) noexcept { return Size; }
-    [[nodiscard]] static constexpr std::size_t size ( ) noexcept { return capacity ( ); } // Non-std (C++17 <), but useful.
-    [[nodiscard]] static constexpr std::size_t max_size ( ) noexcept { return capacity ( ); }
+    [[nodiscard]] static constexpr size_type capacity ( ) noexcept { return Size; }
+    [[nodiscard]] static constexpr size_type size ( ) noexcept { return capacity ( ); } // Non-std (C++17 <), but useful.
+    [[nodiscard]] static constexpr size_type max_size ( ) noexcept { return capacity ( ); }
 
     // STL-functionality.
 
@@ -251,7 +263,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
     void memcpy_impl ( std::byte * to_, std::byte const * from_ ) noexcept {
         constexpr size_t const zero = 0ull;
         assert ( to_ and from_ and to_ != from_ ); // Check for UB.
-        if constexpr ( constexpr std::size_t const size_lower_multiple_of_16 =
+        if constexpr ( constexpr size_type const size_lower_multiple_of_16 =
                            sizeof ( one_based_array ) & 0b1111'1111'1111'1111'1111'1111'1111'0000;
                        size_lower_multiple_of_16 > zero ) {
             if constexpr ( size_lower_multiple_of_16 & 0b0000'0000'0000'0000'0000'0000'0001'0000 ) {
@@ -262,7 +274,7 @@ struct alignas ( ( sizeof ( ValueType ) * Size ) >= SSEThreshold ? std::max ( al
             else {
                 memcpy_sse_32_impl ( to_, from_, size_lower_multiple_of_16 );
             }
-            if constexpr ( constexpr std::size_t const size_remaining = sizeof ( one_based_array ) - size_lower_multiple_of_16;
+            if constexpr ( constexpr size_type const size_remaining = sizeof ( one_based_array ) - size_lower_multiple_of_16;
                            size_remaining > zero )
                 std::memcpy ( to_ + size_lower_multiple_of_16, from_ + size_lower_multiple_of_16, size_remaining );
             return;
