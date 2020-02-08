@@ -164,18 +164,18 @@ struct beap {
     // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
     // These formulas use 1 - based i, and return 1 - based array index.
     constexpr python_span_type span_1_based ( size_type i_ ) const noexcept {
-        // size_type const i_square = i_ * i_;
-        return { i_ * ( i_ - 1 ) / 2 + 1, i_ * ( i_ + 1 ) / 2 };
+        size_type i_square = i_ * i_;
+        return { ( i_square - i_ ) / two_v + one_v, ( i_square + i_ ) / two_v };
     }
 
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
     constexpr python_span_type span ( size_type i_ ) const noexcept {
-        auto [ start, end ] = span_1_based ( ++i_ );
+        auto [ start, end ] = span_1_based ( i_ + one_v );
         return { start - one_v, end - one_v };
     }
 
-    static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 };
+    static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
 
     // Search for element x_ in beap. If not found, return None.
     // Otherwise, return tuple of (idx, height) with array index
@@ -317,10 +317,10 @@ struct beap {
         std::cout << "inserting " << v_ << " start " << start << " end " << end << nl;
         // If last array element as at the span end, then adding
         // new element grows beap height.
-        if ( size ( ) == end )
-            ++height;
+        size_type eos = end_of_storage ( );
+        height += ( eos == end );
         arr.push_back ( v_ );
-        return filter_up ( size ( ) - one_v, height );
+        return filter_up ( eos + one_v, height );
     }
 
     // Remove element with array index idx at the beap span of height h.
@@ -351,10 +351,7 @@ struct beap {
     }
 
     [[nodiscard]] size_type size ( ) const noexcept { return static_cast<int> ( arr.size ( ) ); }
-    [[nodiscard]] size_type end_of_storage ( ) const noexcept {
-        std::cout << "eos " << ( static_cast<int> ( arr.size ( ) ) - one_v ) << nl;
-        return static_cast<int> ( arr.size ( ) ) - one_v;
-    }
+    [[nodiscard]] size_type end_of_storage ( ) const noexcept { return static_cast<int> ( arr.size ( ) ) - one_v; }
 
     // Iterators.
 
