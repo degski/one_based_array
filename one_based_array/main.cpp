@@ -171,8 +171,9 @@ struct beap {
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
     constexpr span_type span ( size_type i_ ) const noexcept {
-        auto [ start, end ] = span_1_based ( i_ + one_v );
-        return { start - one_v, end - one_v };
+        ++i_;
+        size_type i_square = i_ * i_;
+        return { ( i_square - i_ ) / two_v, ( i_square + i_ ) / two_v - one_v };
     }
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
