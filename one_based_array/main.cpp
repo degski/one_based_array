@@ -157,26 +157,50 @@ struct beap {
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
-    using span_type = std::tuple<size_type, size_type>;
-    using compare   = Compare;
+    struct span_type {
+        size_type start, end;
+    };
+
+    using compare = Compare;
+
+    beap ( ) noexcept        = default;
+    beap ( beap const & b_ ) = default;
+    beap ( beap && b_ )      = default;
+
+    template<typename ForwardIt>
+    beap ( ForwardIt b_, ForwardIt e_ ) : arr ( b_, e_ ) {}
+
+    [[maybe_unused]] beap & operator= ( beap const & b_ ) = default;
+    [[maybe_unused]] beap & operator= ( beap && b_ ) = default;
 
     // The i'th block consists of the i elements stored from position
     // ( i * ( i - 1 ) / 2 + 1 ) through position i * ( i + 1 ) / 2.
     // These formulas use 1 - based i, and return 1 - based array index.
-    constexpr span_type span_1_based ( size_type i_ ) const noexcept {
+    [[nodiscard]] constexpr span_type span_1_based ( size_type i_ ) const noexcept {
         return { i_ * ( i_ - one_v ) / two_v + one_v, i_ * ( i_ + one_v ) / two_v };
     }
 
+    [[nodiscard]] span_type next_span ( span_type span_ ) const noexcept {
+        auto tmp = span_.end + one_v;
+        return { tmp, two_v * tmp - span_.start };
+    }
+    [[nodiscard]] span_type prev_span ( span_type span_ ) const noexcept {
+        return { two_v * span_.start - span_.end, span_.start - one_v };
+    }
+
+    [[nodiscard]] size_type next_span_start ( span_type const & span_ ) const noexcept { return span_.end + one_v; }
+    [[nodiscard]] size_type prev_span_start ( span_type const & span_ ) const noexcept { return two_v * span_.start - span_.end; }
+
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
-    constexpr span_type span ( size_type i_ ) const noexcept {
+    [[nodiscard]] constexpr span_type span ( size_type i_ ) const noexcept {
         i_ += one_v;
         return { i_ * ( i_ - one_v ) / two_v, i_ * ( i_ + one_v ) / two_v - one_v };
         // auto [ start, end ] = span_1_based ( i_ + one_v );
         // return { start - one_v, end - one_v };
     }
 
-    static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
+    [[nodiscard]] static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
 
     // Search for element v_ in beap. If not found, return zero-span.
     // Otherwise, return tuple of (idx, height) with array index
@@ -189,55 +213,52 @@ struct beap {
             return Compare ( ) ( p0_, p1_ ) ? -1 : Compare ( ) ( p1_, p0_ ) ? +1 : 0;
         };
         size_type h         = height;
-        auto [ start, end ] = span ( h );
-        size_type idx       = start;
+        span_type curr_span = span ( h );
+        size_type idx       = curr_span.start;
         for ( ever ) {
-            switch ( int three_way_comp_result = compare_3way ( v_, at ( idx ) ); three_way_comp_result ) {
-                case -1: {
-                    // If v_ exceeds the element, either move down one_v position along the column or if
-                    // this is not possible (because we are on the diagonal) then move left and down one_v position
-                    // each.
-                    // => less, move right along the row, or up and right
-                    if ( idx == size ( ) - one_v ) {
-                        size_type diff = idx - start;
-                        h -= one_v;
-                        auto [ start, end ] = span ( h );
-                        idx                 = start + diff;
-                        continue;
-                    }
-                    size_type diff              = idx - start;
-                    auto [ new_start, new_end ] = span ( h + one_v );
-                    size_type new_idx           = new_start + diff + one_v;
-                    if ( new_idx < size ( ) ) {
-                        h += one_v;
-                        start = new_start;
-                        end   = new_end;
-                        idx   = new_idx;
-                        continue;
-                    }
-                    if ( idx == end )
-                        return { zero_v, zero_v };
-                    idx += one_v;
-                    continue;
-                }
-                case 0: {
-                    return { idx, h };
-                }
-                case 1: [[fallthrough]];
-                default: {
+            const_reference at_idx = at ( idx );
+            if ( bool unequal = v_ != at_idx; unequal ) {
+                if ( bool greater = not compare ( v_, at_idx ); greater ) {
                     // If v_ is less than the element under consideration, move left
                     // one_v position along the row.
                     // These rules are given for weirdly mirrored matrix. They're also
                     // for min beap, we so far implement max beap.
                     // So: if v_ is greater than, and move up along the column.
-                    if ( idx == end )
+                    if ( idx == curr_span.end )
                         return { zero_v, zero_v };
-                    size_type diff = idx - start;
+                    size_type diff = idx - curr_span.start;
                     h -= one_v;
-                    auto [ start, end ] = span ( h );
-                    idx                 = start + diff;
+                    idx = prev_span_start ( curr_span ) + diff;
                     continue;
                 }
+                else {
+                    // If v_ exceeds the element, either move down one_v position along the column or if
+                    // this is not possible (because we are on the diagonal) then move left and down one_v position
+                    // each.
+                    // => less, move right along the row, or up and right
+                    if ( idx == size ( ) - one_v ) {
+                        size_type diff = idx - curr_span.start;
+                        h -= one_v;
+                        idx = prev_span_start ( curr_span ) + diff;
+                        continue;
+                    }
+                    size_type diff     = idx - curr_span.start;
+                    span_type new_span = next_span ( curr_span );
+                    size_type new_idx  = new_span.start + diff + one_v;
+                    if ( new_idx < size ( ) ) {
+                        h += one_v;
+                        curr_span = new_span;
+                        idx       = new_idx;
+                        continue;
+                    }
+                    if ( idx == curr_span.end )
+                        return { zero_v, zero_v };
+                    idx += one_v;
+                    continue;
+                }
+            }
+            else {
+                return { idx, h };
             }
         }
     }
@@ -399,9 +420,13 @@ struct beap {
     size_type height = minus_one_v;
 };
 
+// Data from Ian Munro's "ImpSODA06.ppt" presentation, Slide 3,
+// with mistake corrected( 21 and 22 not in beap order ).
+std::array<int, 24> data = { 72, 68, 63, 44, 62, 55, 33, 22, 32, 51, 13, 18, 21, 19, 22, 11, 12, 14, 17, 9, 13, 3, 2, 10 };
+
 int main ( ) {
 
-    beap<int> a;
+    beap<int> a ( std::begin ( data ), std::end ( data ) );
 
     // a.insert ( 67 );
     // a.insert ( 9 );
@@ -409,9 +434,16 @@ int main ( ) {
     // a.insert ( 89 );
     // a.insert ( 19 );
 
-    for ( int i = 0; i <= 128; ++i )
-        std::cout << i << ' ' << std::get<0> ( a.span ( i ) ) << ' ' << std::get<1> ( a.span ( i ) ) << nl;
-
+    /*
+    auto s0 = a.span ( 0 );
+    for ( int i = 0; i <= 128; ++i ) {
+        // std::cout << i << ' ' << std::get<0> ( a.span ( i ) ) << ' ' << std::get<1> ( a.span ( i ) ) << nl;
+        auto ns = a.next_span ( s0 );
+        auto ps = a.prev_span ( ns );
+        assert ( s0 == ps );
+        s0 = ps;
+    }
+    */
     return EXIT_SUCCESS;
 }
 
