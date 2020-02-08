@@ -158,19 +158,19 @@ struct beap {
     using reverse_iterator       = typename data_type::reverse_iterator;
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
-    using python_span_type = std::tuple<size_type, size_type>;
+    using span_type = std::tuple<size_type, size_type>;
 
     // The i'th block consists of the i elements stored from position
     // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
     // These formulas use 1 - based i, and return 1 - based array index.
-    constexpr python_span_type span_1_based ( size_type i_ ) const noexcept {
+    constexpr span_type span_1_based ( size_type i_ ) const noexcept {
         size_type i_square = i_ * i_;
         return { ( i_square - i_ ) / two_v + one_v, ( i_square + i_ ) / two_v };
     }
 
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
-    constexpr python_span_type span ( size_type i_ ) const noexcept {
+    constexpr span_type span ( size_type i_ ) const noexcept {
         auto [ start, end ] = span_1_based ( i_ + one_v );
         return { start - one_v, end - one_v };
     }
@@ -183,7 +183,7 @@ struct beap {
     // is returned because it may be needed for some further
     // operations, to avoid square root operation which is otherwise
     // needed to convert array index to it.)
-    [[nodiscard]] python_span_type search ( value_type const & x_ ) const noexcept {
+    [[nodiscard]] span_type search ( value_type const & x_ ) const noexcept {
         size_type h         = height;
         auto [ start, end ] = span ( h );
         size_type idx       = start;
