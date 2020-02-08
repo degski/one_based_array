@@ -164,15 +164,15 @@ struct beap {
     // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
     // These formulas use 1 - based i, and return 1 - based array index.
     constexpr python_span_type span_1_based ( size_type i_ ) const noexcept {
-        size_type const i_square = i_ * i_;
-        return { i_square - i_, i_square + i_ };
+        // size_type const i_square = i_ * i_;
+        return { i_ * ( i_ - 1 ) / 2 + 1, i_ * ( i_ + 1 ) / 2 };
     }
 
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
     constexpr python_span_type span ( size_type i_ ) const noexcept {
         auto [ start, end ] = span_1_based ( ++i_ );
-        return { start - 1, end - 1 };
+        return { start - one_v, end - one_v };
     }
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 };
@@ -188,7 +188,7 @@ struct beap {
         auto [ start, end ] = span ( h );
         size_type idx       = start;
         for ( ever ) {
-            iters += 1;
+            iters += one_v;
             if ( x_ > arr[ idx ] ) {
                 // If x_ is less than the element under consideration, move left
                 // one_v position along the row.
@@ -198,7 +198,7 @@ struct beap {
                 if ( idx == end )
                     return { zero_v, zero_v };
                 size_type diff = idx - start;
-                h -= 1;
+                h -= one_v;
                 auto [ start, end ] = span ( h );
                 idx                 = start + diff;
                 continue;
@@ -208,18 +208,18 @@ struct beap {
                 // this is not possible (because we are on the diagonal) then move left and down one_v position
                 // each.
                 // => less, move right along the row, or up and right
-                if ( idx == size ( ) - 1 ) {
+                if ( idx == size ( ) - one_v ) {
                     size_type diff = idx - start;
-                    h -= 1;
+                    h -= one_v;
                     auto [ start, end ] = span ( h );
                     idx                 = start + diff;
                     continue;
                 }
                 size_type diff              = idx - start;
-                auto [ new_start, new_end ] = span ( h + 1 );
-                size_type new_idx           = new_start + diff + 1;
+                auto [ new_start, new_end ] = span ( h + one_v );
+                size_type new_idx           = new_start + diff + one_v;
                 if ( new_idx < size ( ) ) {
-                    h += 1;
+                    h += one_v;
                     start = new_start;
                     end   = new_end;
                     idx   = new_idx;
@@ -227,7 +227,7 @@ struct beap {
                 }
                 if ( idx == end )
                     return { zero_v, zero_v };
-                idx += 1;
+                idx += one_v;
                 continue;
             }
             else {
@@ -239,14 +239,16 @@ struct beap {
     // Percolate an element up the beap.
     [[nodiscard]] size_type filter_up ( size_type idx_, size_type h_ ) noexcept {
         value_type v = arr[ idx_ ];
+        std::cout << "filter up value " << v << " idx " << idx_ << " height " << h_ << nl;
         while ( h_ ) {
-            iters += 1;
+            iters += one_v;
             auto [ start, end ] = span ( h_ );
-            size_type left_p = zero_v, right_p = zero_v, val_l = zero_v, val_r = zero_v;
+            size_type left_p = zero_v, right_p = zero_v;
+            value_type val_l = { }, val_r = { };
             size_type diff       = idx_ - start;
             auto [ st_p, end_p ] = span ( h_ - one_v );
             if ( idx_ != start ) {
-                left_p = st_p + diff - 1;
+                left_p = st_p + diff - one_v;
                 val_l  = arr[ left_p ];
             }
             if ( idx_ != end ) {
@@ -256,12 +258,12 @@ struct beap {
             if ( val_l != zero_v and v > val_l and ( val_r == zero_v or val_l < val_r ) ) {
                 std::swap ( arr[ v ], arr[ left_p ] );
                 idx_ = left_p;
-                h_ -= 1;
+                h_ -= one_v;
             }
             else if ( val_r != zero_v and v > val_r ) {
                 std::swap ( arr[ v ], arr[ right_p ] );
                 idx_ = right_p;
-                h_ -= 1;
+                h_ -= one_v;
             }
             else {
                 return idx_;
@@ -274,7 +276,7 @@ struct beap {
     // Percolate an element down the beap.
     [[nodiscard]] size_type filter_down ( size_type idx_, size_type h_ ) noexcept {
         while ( h_ < height - one_v ) {
-            iters += 1;
+            iters += one_v;
             auto [ start, end ]  = span ( h_ );
             size_type diff       = idx_ - start;
             auto [ st_c, end_c ] = span ( h_ + one_v );
@@ -294,12 +296,12 @@ struct beap {
             if ( val_l != zero_v and v < val_l and ( val_r == zero_v or val_l > val_r ) ) {
                 std::swap ( arr[ v ], arr[ left_c ] );
                 idx_ = left_c;
-                h_ += 1;
+                h_ += one_v;
             }
             else if ( val_r != zero_v and v < val_r ) {
                 std::swap ( arr[ v ], arr[ right_c ] );
                 idx_ = right_c;
-                h_ += 1;
+                h_ += one_v;
             }
             else {
                 return idx_;
@@ -312,11 +314,13 @@ struct beap {
     // new element grows beap height.
     [[nodiscard]] size_type insert ( value_type const & v_ ) {
         auto [ start, end ] = span ( height );
+        std::cout << "inserting " << v_ << " start " << start << " end " << end << nl;
         // If last array element as at the span end, then adding
         // new element grows beap height.
-        height += ( end_of_storage ( ) == end );
+        if ( size ( ) == end )
+            ++height;
         arr.push_back ( v_ );
-        return filter_up ( end_of_storage ( ), height );
+        return filter_up ( size ( ) - one_v, height );
     }
 
     // Remove element with array index idx at the beap span of height h.
@@ -325,8 +329,8 @@ struct beap {
         auto [ start, end ] = span ( height );
         // If last array element as at the span start, then removing
         // it decreases the beap height.
-        if ( size ( ) - 1 == start )
-            height -= 1;
+        if ( end_of_storage ( ) == start )
+            height -= one_v;
         value_type && last = std::move ( arr.back ( ) );
         arr.pop_back ( );
         if ( idx_ == size ( ) )
@@ -347,7 +351,10 @@ struct beap {
     }
 
     [[nodiscard]] size_type size ( ) const noexcept { return static_cast<int> ( arr.size ( ) ); }
-    [[nodiscard]] size_type end_of_storage ( ) const noexcept { return static_cast<int> ( arr.size ( ) ) - one_v; }
+    [[nodiscard]] size_type end_of_storage ( ) const noexcept {
+        std::cout << "eos " << ( static_cast<int> ( arr.size ( ) ) - one_v ) << nl;
+        return static_cast<int> ( arr.size ( ) ) - one_v;
+    }
 
     // Iterators.
 
@@ -388,15 +395,17 @@ int main ( ) {
 
     beap<int> a;
 
-    a.insert ( 6 );
+    std::cout << std::get<0> ( a.span_1_based ( 0 ) ) << ' ' << std::get<1> ( a.span_1_based ( 0 ) ) << nl;
+    std::cout << std::get<0> ( a.span_1_based ( 1 ) ) << ' ' << std::get<1> ( a.span_1_based ( 1 ) ) << nl;
+    std::cout << std::get<0> ( a.span_1_based ( 2 ) ) << ' ' << std::get<1> ( a.span_1_based ( 2 ) ) << nl;
+    std::cout << std::get<0> ( a.span_1_based ( 3 ) ) << ' ' << std::get<1> ( a.span_1_based ( 3 ) ) << nl;
+    std::cout << std::get<0> ( a.span_1_based ( 4 ) ) << ' ' << std::get<1> ( a.span_1_based ( 4 ) ) << nl;
 
-    /*
-    int c = 0;
-    for ( auto & e : a )
-        e = ++c;
-    */
-
-    std::cout << a << nl;
+    std::cout << std::get<0> ( a.span ( 0 ) ) << ' ' << std::get<1> ( a.span ( 0 ) ) << nl;
+    std::cout << std::get<0> ( a.span ( 1 ) ) << ' ' << std::get<1> ( a.span ( 1 ) ) << nl;
+    std::cout << std::get<0> ( a.span ( 2 ) ) << ' ' << std::get<1> ( a.span ( 2 ) ) << nl;
+    std::cout << std::get<0> ( a.span ( 3 ) ) << ' ' << std::get<1> ( a.span ( 3 ) ) << nl;
+    std::cout << std::get<0> ( a.span ( 4 ) ) << ' ' << std::get<1> ( a.span ( 4 ) ) << nl;
 
     return EXIT_SUCCESS;
 }
