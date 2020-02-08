@@ -46,37 +46,37 @@ struct Point2 {
 
     using value_type = T;
 
-    value_type x_, y;
+    value_type v_, y;
 
-    Point2 ( ) noexcept : x_{ std::numeric_limits<value_type>::quiet_NaN ( ) } { };
+    Point2 ( ) noexcept : v_{ std::numeric_limits<value_type>::quiet_NaN ( ) } { };
     Point2 ( Point2 const & ) noexcept = default;
     Point2 ( Point2 && ) noexcept      = default;
-    Point2 ( value_type && x_, value_type && y_ ) noexcept : x_{ std::move ( x_ ) }, y{ std::move ( y_ ) } {}
+    Point2 ( value_type && v_, value_type && y_ ) noexcept : v_{ std::move ( v_ ) }, y{ std::move ( y_ ) } {}
 
     // template<typename SfmlVec>
-    // Point2 ( SfmlVec && v_ ) noexcept : x_{ std::move ( v_.x_ ) }, y{ std::move ( v_.y ) } {}
+    // Point2 ( SfmlVec && v_ ) noexcept : v_{ std::move ( v_.v_ ) }, y{ std::move ( v_.y ) } {}
 
     [[maybe_unused]] Point2 & operator= ( Point2 const & ) noexcept = default;
     [[maybe_unused]] Point2 & operator= ( Point2 && ) noexcept = default;
 
-    [[nodiscard]] bool operator== ( Point2 const & p_ ) const noexcept { return x_ == p_.x_ and y == p_.y; }
-    [[nodiscard]] bool operator!= ( Point2 const & p_ ) const noexcept { return x_ != p_.x_ or y != p_.y; }
+    [[nodiscard]] bool operator== ( Point2 const & p_ ) const noexcept { return v_ == p_.v_ and y == p_.y; }
+    [[nodiscard]] bool operator!= ( Point2 const & p_ ) const noexcept { return v_ != p_.v_ or y != p_.y; }
 
     [[maybe_unused]] Point2 & operator+= ( Point2 const & p_ ) noexcept {
-        x_ += p_.x_;
+        v_ += p_.v_;
         y += p_.y;
         return *this;
     }
     [[maybe_unused]] Point2 & operator-= ( Point2 const & p_ ) noexcept {
-        x_ -= p_.x_;
+        v_ -= p_.v_;
         y -= p_.y;
         return *this;
     }
 
     template<typename Stream>
     [[maybe_unused]] friend Stream & operator<< ( Stream & out_, Point2 const & p_ ) noexcept {
-        if ( not std::isnan ( p_.x_ ) )
-            out_ << '<' << p_.x_ << ' ' << p_.y << '>';
+        if ( not std::isnan ( p_.v_ ) )
+            out_ << '<' << p_.v_ << ' ' << p_.y << '>';
         else
             out_ << "<* *>";
         return out_;
@@ -134,7 +134,7 @@ struct click final {
     }
 };
 
-template<typename ValueType>
+template<typename ValueType, typename Compare = std::less<ValueType>>
 struct beap {
 
     private:
@@ -142,8 +142,7 @@ struct beap {
 
     // Current height of beap. Note that height is defined as
     // distance between consecutive layers, so for single - element
-    // beap height is 0, and for empty, we initialize it to
-    // std::numeric_limits<size_type>::max ( ).
+    // beap height is 0, and for empty, we initialize it to - 1.
 
     public:
     using value_type             = typename data_type::value_type;
@@ -159,9 +158,10 @@ struct beap {
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
     using span_type = std::tuple<size_type, size_type>;
+    using compare   = Compare;
 
     // The i'th block consists of the i elements stored from position
-    // ( i( i - 1 ) / 2 + 1 ) through position i( i + 1 ) / 2. "
+    // ( i * ( i - 1 ) / 2 + 1 ) through position i * ( i + 1 ) / 2.
     // These formulas use 1 - based i, and return 1 - based array index.
     constexpr span_type span_1_based ( size_type i_ ) const noexcept {
         return { i_ * ( ( i_ - one_v ) / two_v ) + one_v, i_ * ( ( i_ + one_v ) / two_v ) };
@@ -176,61 +176,72 @@ struct beap {
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
 
-    // Search for element x_ in beap. If not found, return None.
+    [[nodiscard]] int compare_3way ( const_reference p0_, const_reference p1_ ) const noexcept {
+        if ( Compare ( ) ( p0_, p1_ ) )
+            return -1;
+        if ( Compare ( ) ( p1_, p0_ ) )
+            return 1;
+        return 0;
+    }
+
+    // Search for element v_ in beap. If not found, return zero-span.
     // Otherwise, return tuple of (idx, height) with array index
     // and span height at which the element was found. (Span height
     // is returned because it may be needed for some further
     // operations, to avoid square root operation which is otherwise
     // needed to convert array index to it.)
-    [[nodiscard]] span_type search ( value_type const & x_ ) const noexcept {
+    [[nodiscard]] span_type search ( value_type const & v_ ) const noexcept {
         size_type h         = height;
         auto [ start, end ] = span ( h );
         size_type idx       = start;
         for ( ever ) {
             iters += one_v;
-            if ( x_ > arr[ idx ] ) {
-                // If x_ is less than the element under consideration, move left
-                // one_v position along the row.
-                // These rules are given for weirdly mirrored matrix. They're also
-                // for min beap, we so far implement max beap.
-                // So: if x_ is greater than, and move up along the column.
-                if ( idx == end )
-                    return { zero_v, zero_v };
-                size_type diff = idx - start;
-                h -= one_v;
-                auto [ start, end ] = span ( h );
-                idx                 = start + diff;
-                continue;
-            }
-            else if ( x_ < arr[ idx ] ) {
-                // If x_ exceeds the element, either move down one_v position along the column or if
-                // this is not possible (because we are on the diagonal) then move left and down one_v position
-                // each.
-                // => less, move right along the row, or up and right
-                if ( idx == size ( ) - one_v ) {
+            switch ( int three_way_comp_result = compare_3way ( v_, at ( idx ) ); three_way_comp_result ) {
+                case -1: {
+                    // If v_ exceeds the element, either move down one_v position along the column or if
+                    // this is not possible (because we are on the diagonal) then move left and down one_v position
+                    // each.
+                    // => less, move right along the row, or up and right
+                    if ( idx == size ( ) - one_v ) {
+                        size_type diff = idx - start;
+                        h -= one_v;
+                        auto [ start, end ] = span ( h );
+                        idx                 = start + diff;
+                        continue;
+                    }
+                    size_type diff              = idx - start;
+                    auto [ new_start, new_end ] = span ( h + one_v );
+                    size_type new_idx           = new_start + diff + one_v;
+                    if ( new_idx < size ( ) ) {
+                        h += one_v;
+                        start = new_start;
+                        end   = new_end;
+                        idx   = new_idx;
+                        continue;
+                    }
+                    if ( idx == end )
+                        return { zero_v, zero_v };
+                    idx += one_v;
+                    continue;
+                }
+                case 0: {
+                    return { idx, h };
+                }
+                case 1: [[fallthrough]];
+                default: {
+                    // If v_ is less than the element under consideration, move left
+                    // one_v position along the row.
+                    // These rules are given for weirdly mirrored matrix. They're also
+                    // for min beap, we so far implement max beap.
+                    // So: if v_ is greater than, and move up along the column.
+                    if ( idx == end )
+                        return { zero_v, zero_v };
                     size_type diff = idx - start;
                     h -= one_v;
                     auto [ start, end ] = span ( h );
                     idx                 = start + diff;
                     continue;
                 }
-                size_type diff              = idx - start;
-                auto [ new_start, new_end ] = span ( h + one_v );
-                size_type new_idx           = new_start + diff + one_v;
-                if ( new_idx < size ( ) ) {
-                    h += one_v;
-                    start = new_start;
-                    end   = new_end;
-                    idx   = new_idx;
-                    continue;
-                }
-                if ( idx == end )
-                    return { zero_v, zero_v };
-                idx += one_v;
-                continue;
-            }
-            else {
-                return { idx, h };
             }
         }
     }
@@ -242,25 +253,23 @@ struct beap {
         while ( h_ ) {
             iters += one_v;
             auto [ start, end ] = span ( h_ );
-            size_type left_p = zero_v, right_p = zero_v;
-            pointer val_l = nullptr, val_r = nullptr;
-            size_type diff       = idx_ - start;
+            size_type diff = idx_ - start, left_p = zero_v, right_p = zero_v, val_l = zero_v, val_r = zero_v;
             auto [ st_p, end_p ] = span ( h_ - one_v );
             if ( idx_ != start ) {
                 left_p = st_p + diff - one_v;
-                val_l  = arr.data ( ) + left_p;
+                val_l  = left_p;
             }
             if ( idx_ != end ) {
                 right_p = st_p + diff;
-                val_r   = arr.data ( ) + right_p;
+                val_r   = right_p;
             }
-            if ( val_l != nullptr and *v > *val_l and ( val_r == nullptr or *val_l < *val_r ) ) {
-                std::swap ( arr[ v ], arr[ left_p ] );
+            if ( val_l != zero_v and at ( v ) > at ( val_l ) and ( val_r == zero_v or at ( val_l ) < at ( val_r ) ) ) {
+                std::swap ( at ( v ), at ( left_p ) );
                 idx_ = left_p;
                 h_ -= one_v;
             }
-            else if ( val_r != nullptr and *v > *val_r ) {
-                std::swap ( arr[ v ], arr[ right_p ] );
+            else if ( val_r != zero_v and at ( v ) > at ( val_r ) ) {
+                std::swap ( at ( v ), at ( right_p ) );
                 idx_ = right_p;
                 h_ -= one_v;
             }
@@ -277,28 +286,27 @@ struct beap {
         while ( h_ < height - one_v ) {
             iters += one_v;
             auto [ start, end ]  = span ( h_ );
-            size_type diff       = idx_ - start;
             auto [ st_c, end_c ] = span ( h_ + one_v );
-            size_type left_c = st_c + diff, right_c = zero_v, val_l = zero_v, val_r = zero_v;
+            size_type diff = idx_ - start, left_c = st_c + diff, right_c = zero_v, val_l = zero_v, val_r = zero_v;
             if ( left_c < size ( ) ) {
-                val_l   = arr[ left_c ];
+                val_l   = left_c;
                 right_c = left_c + one_v;
                 if ( right_c >= size ( ) )
                     right_c = zero_v;
                 else
-                    val_r = arr[ right_c ];
+                    val_r = right_c;
             }
             else {
                 left_c = zero_v;
             }
-            size_type v = arr[ idx_ ];
-            if ( val_l != zero_v and v < val_l and ( val_r == zero_v or val_l > val_r ) ) {
-                std::swap ( arr[ v ], arr[ left_c ] );
+            pointer v = arr.data ( ) + idx_;
+            if ( val_l != zero_v and at ( v ) < at ( val_l ) and ( val_r == zero_v or at ( val_l ) > at ( val_r ) ) ) {
+                std::swap ( at ( v ), at ( left_c ) );
                 idx_ = left_c;
                 h_ += one_v;
             }
-            else if ( val_r != zero_v and v < val_r ) {
-                std::swap ( arr[ v ], arr[ right_c ] );
+            else if ( val_r != zero_v and at ( v ) < at ( val_r ) ) {
+                std::swap ( at ( v ), at ( right_c ) );
                 idx_ = right_c;
                 h_ += one_v;
             }
@@ -328,25 +336,22 @@ struct beap {
         auto [ start, end ] = span ( height );
         // If last array element as at the span start, then removing
         // it decreases the beap height.
-        if ( end_of_storage ( ) == start )
-            height -= one_v;
-        value_type && last = std::move ( arr.back ( ) );
-        arr.pop_back ( );
+        height -= ( end_of_storage ( ) == start );
+        value_type && last = pop ( );
         if ( idx_ == size ( ) )
             return { };
-        value_type && v   = std::move ( arr[ idx_ ] );
-        arr[ idx_ ]       = std::move ( last );
-        size_type out_idx = filter_down ( idx_, h_ );
-        if ( out_idx == idx_ )
+        value_type && removed = std::move ( at ( idx_ ) );
+        at ( idx_ )           = std::move ( last );
+        if ( size_type out_idx = filter_down ( idx_, h_ ); out_idx == idx_ )
             filter_up ( idx_, h_ );
-        return { std::move ( v ) };
+        return { std::move ( removed ) };
     }
     // Remove element with value of v from beap.
     std::optional<value_type> remove ( value_type const & v_ ) noexcept {
         auto [ idx, h ] = search ( v_ );
         if ( not idx or not h )
             return { };
-        return erase ( idx, h );
+        return remove ( idx, h );
     }
 
     [[nodiscard]] size_type size ( ) const noexcept { return static_cast<int> ( arr.size ( ) ); }
@@ -383,6 +388,19 @@ struct beap {
         return out_;
     }
 
+    private:
+    [[nodiscard]] const_reference at ( pointer p_ ) const noexcept { return p_[ 0 ]; }
+    [[nodiscard]] reference at ( pointer p_ ) noexcept { return p_[ 0 ]; }
+
+    [[nodiscard]] const_reference at ( size_type s_ ) const noexcept { return arr.data ( )[ s_ ]; }
+    [[nodiscard]] reference at ( size_type s_ ) noexcept { return arr.data ( )[ s_ ]; }
+
+    value_type && pop ( ) {
+        value_type && last = std::move ( arr.back ( ) );
+        arr.pop_back ( );
+        return std::move ( last );
+    }
+
     data_type arr;
     size_type height = minus_one_v, iters = zero_v;
 };
@@ -391,17 +409,10 @@ int main ( ) {
 
     beap<int> a;
 
-    std::cout << std::get<0> ( a.span_1_based ( 0 ) ) << ' ' << std::get<1> ( a.span_1_based ( 0 ) ) << nl;
-    std::cout << std::get<0> ( a.span_1_based ( 1 ) ) << ' ' << std::get<1> ( a.span_1_based ( 1 ) ) << nl;
-    std::cout << std::get<0> ( a.span_1_based ( 2 ) ) << ' ' << std::get<1> ( a.span_1_based ( 2 ) ) << nl;
-    std::cout << std::get<0> ( a.span_1_based ( 3 ) ) << ' ' << std::get<1> ( a.span_1_based ( 3 ) ) << nl;
-    std::cout << std::get<0> ( a.span_1_based ( 4 ) ) << ' ' << std::get<1> ( a.span_1_based ( 4 ) ) << nl;
+    a.insert ( 6 );
 
-    std::cout << std::get<0> ( a.span ( 0 ) ) << ' ' << std::get<1> ( a.span ( 0 ) ) << nl;
-    std::cout << std::get<0> ( a.span ( 1 ) ) << ' ' << std::get<1> ( a.span ( 1 ) ) << nl;
-    std::cout << std::get<0> ( a.span ( 2 ) ) << ' ' << std::get<1> ( a.span ( 2 ) ) << nl;
-    std::cout << std::get<0> ( a.span ( 3 ) ) << ' ' << std::get<1> ( a.span ( 3 ) ) << nl;
-    std::cout << std::get<0> ( a.span ( 4 ) ) << ' ' << std::get<1> ( a.span ( 4 ) ) << nl;
+    for ( int i = 1; i <= 128; ++i )
+        std::cout << i << ' ' << std::get<0> ( a.span ( i ) ) << ' ' << std::get<1> ( a.span ( i ) ) << nl;
 
     return EXIT_SUCCESS;
 }
