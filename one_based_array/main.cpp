@@ -164,25 +164,19 @@ struct beap {
     // ( i * ( i - 1 ) / 2 + 1 ) through position i * ( i + 1 ) / 2.
     // These formulas use 1 - based i, and return 1 - based array index.
     constexpr span_type span_1_based ( size_type i_ ) const noexcept {
-        return { i_ * ( ( i_ - one_v ) / two_v ) + one_v, i_ * ( ( i_ + one_v ) / two_v ) };
+        return { i_ * ( i_ - one_v ) / two_v + one_v, i_ * ( i_ + one_v ) / two_v };
     }
 
     // Convert to use sane zero_v-based indexes both for "block" (span)
     // and array.
     constexpr span_type span ( size_type i_ ) const noexcept {
-        ++i_;
-        return { i_ * ( ( i_ - one_v ) / two_v ), i_ * ( ( i_ + one_v ) / two_v ) - one_v };
+        i_ += one_v;
+        return { i_ * ( i_ - one_v ) / two_v, i_ * ( i_ + one_v ) / two_v - one_v };
+        // auto [ start, end ] = span_1_based ( i_ + one_v );
+        // return { start - one_v, end - one_v };
     }
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
-
-    [[nodiscard]] int compare_3way ( const_reference p0_, const_reference p1_ ) const noexcept {
-        if ( Compare ( ) ( p0_, p1_ ) )
-            return -1;
-        if ( Compare ( ) ( p1_, p0_ ) )
-            return 1;
-        return 0;
-    }
 
     // Search for element v_ in beap. If not found, return zero-span.
     // Otherwise, return tuple of (idx, height) with array index
@@ -191,11 +185,13 @@ struct beap {
     // operations, to avoid square root operation which is otherwise
     // needed to convert array index to it.)
     [[nodiscard]] span_type search ( value_type const & v_ ) const noexcept {
+        auto compare_3way = [] ( const_reference p0_, const_reference p1_ ) noexcept {
+            return Compare ( ) ( p0_, p1_ ) ? -1 : Compare ( ) ( p1_, p0_ ) ? +1 : 0;
+        };
         size_type h         = height;
         auto [ start, end ] = span ( h );
         size_type idx       = start;
         for ( ever ) {
-            iters += one_v;
             switch ( int three_way_comp_result = compare_3way ( v_, at ( idx ) ); three_way_comp_result ) {
                 case -1: {
                     // If v_ exceeds the element, either move down one_v position along the column or if
@@ -249,9 +245,7 @@ struct beap {
     // Percolate an element up the beap.
     [[nodiscard]] size_type filter_up ( size_type idx_, size_type h_ ) noexcept {
         pointer v = arr.data ( ) + idx_;
-        std::cout << "filter up value " << v << " idx " << idx_ << " height " << h_ << nl;
         while ( h_ ) {
-            iters += one_v;
             auto [ start, end ] = span ( h_ );
             size_type diff = idx_ - start, left_p = zero_v, right_p = zero_v, val_l = zero_v, val_r = zero_v;
             auto [ st_p, end_p ] = span ( h_ - one_v );
@@ -284,7 +278,6 @@ struct beap {
     // Percolate an element down the beap.
     [[nodiscard]] size_type filter_down ( size_type idx_, size_type h_ ) noexcept {
         while ( h_ < height - one_v ) {
-            iters += one_v;
             auto [ start, end ]  = span ( h_ );
             auto [ st_c, end_c ] = span ( h_ + one_v );
             size_type diff = idx_ - start, left_c = st_c + diff, right_c = zero_v, val_l = zero_v, val_r = zero_v;
@@ -324,9 +317,10 @@ struct beap {
         std::cout << "inserting " << v_ << " start " << start << " end " << end << nl;
         // If last array element as at the span end, then adding
         // new element grows beap height.
-        size_type eos = end_of_storage ( );
-        height += ( eos == end );
+        size_type eos = size ( ) - one_v;
+        height += static_cast<int> ( eos == end );
         arr.push_back ( v_ );
+        std::cout << "filter up " << v_ << " idx " << ( eos + one_v ) << " height " << height << nl;
         return filter_up ( eos + one_v, height );
     }
 
@@ -402,16 +396,20 @@ struct beap {
     }
 
     data_type arr;
-    size_type height = minus_one_v, iters = zero_v;
+    size_type height = minus_one_v;
 };
 
 int main ( ) {
 
     beap<int> a;
 
-    a.insert ( 6 );
+    // a.insert ( 67 );
+    // a.insert ( 9 );
+    // a.insert ( 91 );
+    // a.insert ( 89 );
+    // a.insert ( 19 );
 
-    for ( int i = 1; i <= 128; ++i )
+    for ( int i = 0; i <= 128; ++i )
         std::cout << i << ' ' << std::get<0> ( a.span ( i ) ) << ' ' << std::get<1> ( a.span ( i ) ) << nl;
 
     return EXIT_SUCCESS;
