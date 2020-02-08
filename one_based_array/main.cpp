@@ -237,29 +237,29 @@ struct beap {
 
     // Percolate an element up the beap.
     [[nodiscard]] size_type filter_up ( size_type idx_, size_type h_ ) noexcept {
-        value_type v = arr[ idx_ ];
+        pointer v = arr.data ( ) + idx_;
         std::cout << "filter up value " << v << " idx " << idx_ << " height " << h_ << nl;
         while ( h_ ) {
             iters += one_v;
             auto [ start, end ] = span ( h_ );
             size_type left_p = zero_v, right_p = zero_v;
-            value_type val_l = { }, val_r = { };
+            pointer val_l = nullptr, val_r = nullptr;
             size_type diff       = idx_ - start;
             auto [ st_p, end_p ] = span ( h_ - one_v );
             if ( idx_ != start ) {
                 left_p = st_p + diff - one_v;
-                val_l  = arr[ left_p ];
+                val_l  = arr.data ( ) + left_p;
             }
             if ( idx_ != end ) {
                 right_p = st_p + diff;
-                val_r   = arr[ right_p ];
+                val_r   = arr.data ( ) + right_p;
             }
-            if ( val_l != zero_v and v > val_l and ( val_r == zero_v or val_l < val_r ) ) {
+            if ( val_l != nullptr and *v > *val_l and ( val_r == nullptr or *val_l < *val_r ) ) {
                 std::swap ( arr[ v ], arr[ left_p ] );
                 idx_ = left_p;
                 h_ -= one_v;
             }
-            else if ( val_r != zero_v and v > val_r ) {
+            else if ( val_r != nullptr and *v > *val_r ) {
                 std::swap ( arr[ v ], arr[ right_p ] );
                 idx_ = right_p;
                 h_ -= one_v;
@@ -405,3 +405,5 @@ int main ( ) {
 
     return EXIT_SUCCESS;
 }
+
+#undef ever
