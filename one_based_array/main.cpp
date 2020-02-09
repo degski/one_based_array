@@ -200,7 +200,7 @@ struct beap {
         // return { start - one_v, end - one_v };
     }
 
-    [[nodiscard]] static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
+    static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
 
     // Search for element v_ in beap. If not found, return zero-span.
     // Otherwise, return tuple of (idx, height) with array index
@@ -218,7 +218,7 @@ struct beap {
         for ( ever ) {
             const_reference at_idx = at ( idx );
             if ( bool unequal = v_ != at_idx; unequal ) {
-                if ( bool greater = not compare ( v_, at_idx ); greater ) {
+                if ( bool greater = not compare ( ) ( v_, at_idx ); greater ) {
                     // If v_ is less than the element under consideration, move left
                     // one_v position along the row.
                     // These rules are given for weirdly mirrored matrix. They're also
@@ -258,6 +258,7 @@ struct beap {
                 }
             }
             else {
+                std::cout << "found " << at ( idx ) << nl;
                 return { idx, h };
             }
         }
@@ -428,22 +429,27 @@ int main ( ) {
 
     beap<int> a ( std::begin ( data ), std::end ( data ) );
 
+    auto s = a.search ( 22 );
+
+    std::cout << s.start << " " << s.end << nl;
+
+    exit ( 0 );
+
     // a.insert ( 67 );
     // a.insert ( 9 );
     // a.insert ( 91 );
     // a.insert ( 89 );
     // a.insert ( 19 );
 
-    /*
     auto s0 = a.span ( 0 );
-    for ( int i = 0; i <= 128; ++i ) {
-        // std::cout << i << ' ' << std::get<0> ( a.span ( i ) ) << ' ' << std::get<1> ( a.span ( i ) ) << nl;
+    for ( int i = 0; i <= 101; ++i ) {
+        std::cout << i << ' ' << a.span ( i ).start << ' ' << a.span ( i ).end << " " << ( ( i * ( i + 1 ) ) / 2 ) << nl;
         auto ns = a.next_span ( s0 );
         auto ps = a.prev_span ( ns );
-        assert ( s0 == ps );
+        assert ( s0.start == ps.start and s0.start == ps.end );
         s0 = ps;
     }
-    */
+
     return EXIT_SUCCESS;
 }
 
