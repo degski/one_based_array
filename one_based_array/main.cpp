@@ -264,6 +264,49 @@ struct beap {
         }
     }
 
+    [[nodiscard]] span_type search_2 ( value_type const & v_ ) const noexcept {
+        size_type h         = height;
+        span_type curr_span = span ( h );
+        size_type idx       = curr_span.start;
+        for ( ever ) {
+            if ( v_ > arr[ idx ] ) {
+                if ( idx == curr_span.end )
+                    return { zero_v, zero_v };
+                size_type diff = idx - curr_span.start;
+                h -= one_v;
+                curr_span = span ( h );
+                idx       = curr_span.start + diff;
+                continue;
+            }
+            else if ( v_ < arr[ idx ] ) {
+                if ( idx == size ( ) - one_v ) {
+                    size_type diff = idx - curr_span.start;
+                    h -= one_v;
+                    curr_span = span ( h );
+                    idx       = curr_span.start + diff;
+                    continue;
+                }
+                size_type diff     = idx - curr_span.start;
+                span_type new_span = next_span ( curr_span );
+                size_type new_idx  = new_span.start + diff + one_v;
+                if ( new_idx < size ( ) ) {
+                    h += one_v;
+                    curr_span = new_span;
+                    idx       = new_idx;
+                    continue;
+                }
+                if ( idx == curr_span.end )
+                    return { zero_v, zero_v };
+                idx += one_v;
+                continue;
+            }
+            else {
+                std::cout << "found " << at ( idx ) << nl;
+                return { idx, h };
+            }
+        }
+    }
+
     // Percolate an element up the beap.
     [[nodiscard]] size_type filter_up ( size_type idx_, size_type h_ ) noexcept {
         pointer v = arr.data ( ) + idx_;
@@ -421,6 +464,12 @@ struct beap {
     size_type height = minus_one_v;
 };
 
+template<typename T>
+void pr ( T const & b_, int i_ ) {
+    auto s = b_.search ( i_ );
+    std::cout << "i " << i_ << " " << s.start << " " << s.end << nl;
+}
+
 // Data from Ian Munro's "ImpSODA06.ppt" presentation, Slide 3,
 // with mistake corrected( 21 and 22 not in beap order ).
 std::array<int, 24> data = { 72, 68, 63, 44, 62, 55, 33, 22, 32, 51, 13, 18, 21, 19, 22, 11, 12, 14, 17, 9, 13, 3, 2, 10 };
@@ -429,9 +478,8 @@ int main ( ) {
 
     beap<int> a ( std::begin ( data ), std::end ( data ) );
 
-    auto s = a.search ( 22 );
-
-    std::cout << s.start << " " << s.end << nl;
+    for ( auto n : data )
+        pr ( a, n );
 
     exit ( 0 );
 
