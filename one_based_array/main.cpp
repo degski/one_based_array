@@ -134,6 +134,33 @@ struct click final {
     }
 };
 
+#define LEVEL_DISPATCH_BLOCK_0( V, N, L )                                                                                          \
+    do {                                                                                                                           \
+        if ( ( V ) < ( ( N ) + ( L ) + 0 + ( L ) + 1 + ( L ) + 2 + ( L ) + 3 ) ) {                                                 \
+            if ( ( V ) < ( ( N ) + ( L ) + 0 ) )                                                                                   \
+                return ( L ) + 0;                                                                                                  \
+            if ( ( V ) < ( ( N ) + ( L ) + 0 + ( L ) + 1 ) )                                                                       \
+                return ( L ) + 1;                                                                                                  \
+            if ( ( V ) < ( ( N ) + ( L ) + 0 + ( L ) + 1 + ( L ) + 2 ) )                                                           \
+                return ( L ) + 2;                                                                                                  \
+            return ( L ) + 3;                                                                                                      \
+        }                                                                                                                          \
+    } while ( false );
+
+#define LEVEL_DISPATCH_BLOCK_1( V, B, L )                                                                                          \
+    do {                                                                                                                           \
+        if ( ( V ) < ( ( B ) + ( 4 * ( L ) + 4 ) + ( 4 * ( ( L ) + 4 ) + 4 ) ) ) {                                                 \
+            LEVEL_DISPATCH_BLOCK_0 ( ( V ), ( B ), ( L ) );                                                                        \
+            LEVEL_DISPATCH_BLOCK_0 ( ( V ), ( B ) + ( 4 * ( L ) + 4 ), ( L ) + 4 )                                                 \
+        }                                                                                                                          \
+        else {                                                                                                                     \
+            LEVEL_DISPATCH_BLOCK_0 ( ( V ), ( B ) + ( 4 * ( L ) + 4 ) + ( 4 * ( ( L ) + 4 ) + 4 ), ( L ) + 4 + 4 );                \
+            LEVEL_DISPATCH_BLOCK_0 ( ( V ), ( B ) + ( 4 * ( L ) + 4 ) + ( 4 * ( ( L ) + 4 ) + 4 ) + ( 4 * ( ( L ) + 4 + 4 ) + 4 ), \
+                                     ( L ) + 4 + 4 + 4 )                                                                           \
+        }                                                                                                                          \
+    } while ( false );
+#define LEVEL_DISPATCH_BLOCK_2( V, B ) LEVEL_DISPATCH_BLOCK_1 ( ( V ), ( B ), level_basic ( ( B ) ) )
+
 template<typename ValueType, typename Compare = std::less<ValueType>>
 struct beap {
 
@@ -161,6 +188,11 @@ struct beap {
         size_type start, end;
     };
 
+    private:
+    template<size_type S>
+    using lookup_table_type = std::array<char, S>;
+
+    public:
     using compare = Compare;
 
     beap ( ) noexcept        = default;
@@ -540,11 +572,75 @@ struct beap {
         return s.start;
     }
 
-    [[nodiscard]] size_type level ( size_type n_ ) const noexcept {
-        size_type level = zero_v, stride = zero_v;
+    [[nodiscard]] static constexpr size_type level_basic ( size_type n_, size_type l_ = zero_v, size_type s_ = zero_v ) noexcept {
+        size_type level = l_, stride = s_;
         while ( level < n_ )
             level += ++stride;
         return stride;
+    }
+
+    [[nodiscard]] static constexpr size_type small_level ( size_type l_ ) noexcept {
+        alignas ( 64 ) constexpr auto level_small = level_small_lookup_table ( );
+        return level_small[ l_ ];
+    }
+
+    template<size_type StartLevel>
+    [[nodiscard]] static size_type medium_level ( size_type l_ ) noexcept {
+        constexpr size_type sol = start_of_level ( StartLevel ) + 1, l = StartLevel;
+        if ( l_ < ( sol + 4 * l + 6 ) ) {
+            if ( l_ < ( sol + l ) )
+                return l;
+            if ( l_ < ( sol + 2 * l + 1 ) )
+                return l + 1;
+            if ( l_ < ( sol + 3 * l + 3 ) )
+                return l + 2;
+            return l + 3;
+        }
+        return minus_one_v;
+    }
+
+    [[nodiscard]] size_type level ( size_type l_ ) const noexcept {
+        if ( l_ < start_of_level ( 15 ) ) {
+            if ( l_ < ( start_of_level ( 11 ) + one_v ) )
+                return small_level ( l_ );
+            return medium_level<11> ( l_ ); // 4 levels.
+        }
+        return level_basic ( l_, start_of_level ( 15 ), level_basic ( start_of_level ( 15 ) ) );
+    }
+
+    [[nodiscard]] static constexpr lookup_table_type<56> level_small_lookup_table ( ) noexcept {
+        alignas ( 64 ) constexpr lookup_table_type<56> table = { 0, 1, 2, 2, 3, 3, 3, 4, 4,  4,  4,  5,  5,  5,  5,  5,  6,  6, 6,
+                                                                 6, 6, 6, 7, 7, 7, 7, 7, 7,  7,  8,  8,  8,  8,  8,  8,  8,  8, 9,
+                                                                 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
+        return table;
+    }
+
+    [[nodiscard]] static constexpr size_type nth_triangular_number ( size_type n_ ) noexcept {
+        assert ( n_ >= zero_v );
+        return ( n_ * ( n_ + one_v ) ) / two_v;
+    }
+
+    [[nodiscard]] static constexpr size_type start_of_level ( size_type level_ ) noexcept {
+        assert ( level_ > zero_v );
+        return nth_triangular_number ( level_ - one_v );
+    }
+    [[nodiscard]] static constexpr size_type end_of_level ( size_type level_ ) noexcept {
+        assert ( level_ > zero_v );
+        return nth_triangular_number ( level_ );
+    }
+
+    [[nodiscard]] static constexpr span_type level_span ( size_type level_ ) noexcept {
+        assert ( level_ > zero_v );
+        return { start_of_level ( level_ ), end_of_level ( level_ ) };
+    }
+
+    [[nodiscard]] static constexpr size_type next_level_span ( size_type level_ ) noexcept {
+        assert ( level_ > zero_v );
+        return level_span ( level_ + one_v );
+    }
+    [[nodiscard]] static constexpr size_type prev_level_span ( size_type level_ ) noexcept {
+        assert ( level_ > zero_v );
+        return level_span ( level_ - one_v );
     }
 
     data_type arr;
@@ -595,9 +691,17 @@ int main ( ) {
 
     // for ( int i = 0; i < 64; ++i )
     //  std::cout << i << ' ' << a.span ( i ).start << ' ' << a.span ( i ).end << nl;
+    /*
+    for ( int i = 1; i < 1'200; ++i )
+        std::cout << std::setw ( 4 ) << std::setfill ( ' ' ) << i << ' ' << std::setw ( 6 ) << std::setfill ( ' ' )
+                  << a.start_of_level ( i ) << ' ' << std::setw ( 6 ) << std::setfill ( ' ' ) << a.end_of_level ( i )
+                  << std::setw ( 2 ) << nl;
 
-    std::cout << a.level ( 18 ) << nl;
-
+    exit ( 0 );
+    */
+    for ( int i = 0; i < 1'200; ++i )
+        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.level_basic ( i ) << ' ' << a.level ( i ) << ' '
+                  << std::setw ( 0 ) << std::boolalpha << ( a.level_basic ( i ) == a.level ( i ) ) << std::noboolalpha << nl;
     exit ( 0 );
 
     for ( int const & n : data ) {
@@ -631,3 +735,4 @@ int main ( ) {
 }
 
 #undef ever
+#undef LEVEL_DISPATCH_BLOCK
