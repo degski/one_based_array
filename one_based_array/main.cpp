@@ -168,7 +168,7 @@ struct beap {
     beap ( beap && b_ )      = default;
 
     template<typename ForwardIt>
-    beap ( ForwardIt b_, ForwardIt e_ ) : arr ( b_, e_ ) {}
+    beap ( ForwardIt b_, ForwardIt e_ ) : arr ( b_, e_ ), height ( ) {}
 
     [[maybe_unused]] beap & operator= ( beap const & b_ ) = default;
     [[maybe_unused]] beap & operator= ( beap && b_ ) = default;
@@ -196,8 +196,6 @@ struct beap {
     [[nodiscard]] constexpr span_type span ( size_type i_ ) const noexcept {
         i_ += one_v;
         return { i_ * ( i_ - one_v ) / two_v, i_ * ( i_ + one_v ) / two_v - one_v };
-        // auto [ start, end ] = span_1_based ( i_ + one_v );
-        // return { start - one_v, end - one_v };
     }
 
     static constexpr size_type minus_one_v = { -1 }, zero_v = { 0 }, one_v = { 1 }, two_v = { 2 };
@@ -212,9 +210,9 @@ struct beap {
         auto compare_3way = [] ( const_reference p0_, const_reference p1_ ) noexcept {
             return Compare ( ) ( p0_, p1_ ) ? -1 : Compare ( ) ( p1_, p0_ ) ? +1 : 0;
         };
-        size_type h         = height;
-        span_type curr_span = span ( h );
-        size_type idx       = curr_span.start;
+        size_type h   = height;
+        span_type s   = span ( h );
+        size_type idx = s.start;
         for ( ever ) {
             const_reference at_idx = at ( idx );
             if ( bool unequal = v_ != at_idx; unequal ) {
@@ -224,11 +222,11 @@ struct beap {
                     // These rules are given for weirdly mirrored matrix. They're also
                     // for min beap, we so far implement max beap.
                     // So: if v_ is greater than, and move up along the column.
-                    if ( idx == curr_span.end )
+                    if ( idx == s.end )
                         return { zero_v, zero_v };
-                    size_type diff = idx - curr_span.start;
+                    size_type diff = idx - s.start;
                     h -= one_v;
-                    idx = prev_span_start ( curr_span ) + diff;
+                    idx = prev_span_start ( s ) + diff;
                     continue;
                 }
                 else {
@@ -237,21 +235,21 @@ struct beap {
                     // each.
                     // => less, move right along the row, or up and right
                     if ( idx == size ( ) - one_v ) {
-                        size_type diff = idx - curr_span.start;
+                        size_type diff = idx - s.start;
                         h -= one_v;
-                        idx = prev_span_start ( curr_span ) + diff;
+                        idx = prev_span_start ( s ) + diff;
                         continue;
                     }
-                    size_type diff     = idx - curr_span.start;
-                    span_type new_span = next_span ( curr_span );
+                    size_type diff     = idx - s.start;
+                    span_type new_span = next_span ( s );
                     size_type new_idx  = new_span.start + diff + one_v;
                     if ( new_idx < size ( ) ) {
                         h += one_v;
-                        curr_span = new_span;
-                        idx       = new_idx;
+                        s   = new_span;
+                        idx = new_idx;
                         continue;
                     }
-                    if ( idx == curr_span.end )
+                    if ( idx == s.end )
                         return { zero_v, zero_v };
                     idx += one_v;
                     continue;
@@ -264,47 +262,116 @@ struct beap {
         }
     }
 
-    [[nodiscard]] span_type search_2 ( value_type const & v_ ) const noexcept {
-        size_type h         = height;
-        span_type curr_span = span ( h );
-        size_type idx       = curr_span.start;
+    [[nodiscard]] bool is_idx_eq_end ( size_type idx_ ) const noexcept {
+        if ( ( arr.data ( ) + idx_ - one_v ) == std::addressof ( arr.back ( ) ) )
+            return true;
+        return false;
+    }
+
+    [[nodiscard]] span_type search_1 ( value_type const & v_ ) const noexcept {
+        size_type h = height;
+        span_type s = span ( h );
+        size_type i = s.start;
         for ( ever ) {
-            if ( v_ > arr[ idx ] ) {
-                if ( idx == curr_span.end )
-                    return { zero_v, zero_v };
-                size_type diff = idx - curr_span.start;
+            std::printf ( "search: idx: %d\n", i );
+            if ( bool idx_eq_end = is_idx_eq_end ( i ), is_greater = not idx_eq_end ? v_ > arr[ i ] : true; is_greater ) {
+                std::printf ( "moving up ^" );
+                if ( idx_eq_end ) {
+                    std::printf ( "can't move up\n" );
+                    break;
+                }
+                size_type diff = i - s.start;
                 h -= one_v;
-                curr_span = span ( h );
-                idx       = curr_span.start + diff;
+                s = span ( h );
+                i = s.start + diff;
                 continue;
             }
-            else if ( v_ < arr[ idx ] ) {
-                if ( idx == size ( ) - one_v ) {
-                    size_type diff = idx - curr_span.start;
+            else if ( bool idx_eq_end = is_idx_eq_end ( i ), is_less = not idx_eq_end ? v_ > arr[ i ] : true; is_less ) {
+                std::printf ( "moving right ->\n" );
+                if ( i == size ( ) - one_v ) {
+                    std::printf ( "last element reached, can't move right, moving up instead\n" );
+                    size_type diff = i - s.start;
                     h -= one_v;
-                    curr_span = span ( h );
-                    idx       = curr_span.start + diff;
+                    s = span ( h );
+                    i = s.start + diff;
                     continue;
                 }
-                size_type diff     = idx - curr_span.start;
-                span_type new_span = next_span ( curr_span );
+                size_type diff     = i - s.start;
+                span_type new_span = next_span ( s );
                 size_type new_idx  = new_span.start + diff + one_v;
                 if ( new_idx < size ( ) ) {
                     h += one_v;
-                    curr_span = new_span;
-                    idx       = new_idx;
+                    s = new_span;
+                    i = new_idx;
                     continue;
                 }
-                if ( idx == curr_span.end )
-                    return { zero_v, zero_v };
-                idx += one_v;
+                std::printf ( "can't move right, moving right-up " );
+                if ( idx_eq_end ) {
+                    std::printf ( "can't move right-up\n" );
+                    break;
+                }
+                i += one_v;
                 continue;
             }
             else {
-                std::cout << "found " << at ( idx ) << nl;
-                return { idx, h };
+                return { i, h };
             }
         }
+        std::printf ( "not found\n" );
+        return { zero_v, zero_v };
+    }
+
+    [[nodiscard]] span_type search_2 ( value_type const & v_ ) const noexcept {
+        size_type h = height;
+        span_type s = span ( h );
+        size_type i = s.start;
+        for ( ever ) {
+            std::printf ( "search: idx: %d\n", i );
+            if ( v_ > arr[ i ] ) {
+                std::printf ( "moving up ^" );
+                if ( i == s.end ) {
+                    std::printf ( "can't move up\n" );
+                    break;
+                }
+                size_type diff = i - s.start;
+                h -= one_v;
+                s = span ( h );
+                i = s.start + diff;
+                continue;
+            }
+            else if ( v_ < arr[ i ] ) {
+                std::printf ( "moving right ->\n" );
+                if ( i == size ( ) - one_v ) {
+                    std::printf ( "last element reached, can't move right, moving up instead\n" );
+                    size_type diff = i - s.start;
+                    h -= one_v;
+                    s = span ( h );
+                    i = s.start + diff;
+                    continue;
+                }
+                size_type diff     = i - s.start;
+                span_type new_span = next_span ( s );
+                size_type new_idx  = new_span.start + diff + one_v;
+                if ( new_idx < size ( ) ) {
+                    h += one_v;
+                    s = new_span;
+                    i = new_idx;
+                    continue;
+                }
+                std::printf ( "can't move right, moving right-up " );
+                if ( i == s.end ) {
+                    std::printf ( "can't move right-up\n" );
+                    break;
+                }
+                i += one_v;
+                continue;
+            }
+            else {
+                return { i, h };
+            }
+        }
+        std::printf ( "not found\n" );
+        return { zero_v, zero_v };
     }
 
     // Percolate an element up the beap.
@@ -447,12 +514,18 @@ struct beap {
         return out_;
     }
 
-    private:
+    // private:
     [[nodiscard]] const_reference at ( pointer p_ ) const noexcept { return p_[ 0 ]; }
     [[nodiscard]] reference at ( pointer p_ ) noexcept { return p_[ 0 ]; }
 
-    [[nodiscard]] const_reference at ( size_type s_ ) const noexcept { return arr.data ( )[ s_ ]; }
-    [[nodiscard]] reference at ( size_type s_ ) noexcept { return arr.data ( )[ s_ ]; }
+    [[nodiscard]] const_reference at ( size_type s_ ) const noexcept {
+        // if ( 0 > s_ ) {
+        //     std::cout << "negative index used" << nl;
+        //     return arr.back ( );
+        // }
+        return arr.data ( )[ s_ ];
+    }
+    [[nodiscard]] reference at ( size_type s_ ) noexcept { return std::as_const ( this )->at ( s_ ); }
 
     value_type && pop ( ) {
         value_type && last = std::move ( arr.back ( ) );
@@ -460,15 +533,23 @@ struct beap {
         return std::move ( last );
     }
 
+    value_type check_search ( value_type i_ ) const noexcept {
+        auto s = search_2 ( i_ );
+        // std::cout << "i " << i_ << " " << s.start << " " << s.end << nl;
+        assert ( at ( s.start ) == i_ );
+        return s.start;
+    }
+
+    [[nodiscard]] size_type level ( size_type n_ ) const noexcept {
+        size_type level = zero_v, stride = zero_v;
+        while ( level < n_ )
+            level += ++stride;
+        return stride;
+    }
+
     data_type arr;
     size_type height = minus_one_v;
 };
-
-template<typename T>
-void pr ( T const & b_, int i_ ) {
-    auto s = b_.search ( i_ );
-    std::cout << "i " << i_ << " " << s.start << " " << s.end << nl;
-}
 
 // Data from Ian Munro's "ImpSODA06.ppt" presentation, Slide 3,
 // with mistake corrected( 21 and 22 not in beap order ).
@@ -478,8 +559,56 @@ int main ( ) {
 
     beap<int> a ( std::begin ( data ), std::end ( data ) );
 
-    for ( auto n : data )
-        pr ( a, n );
+    // Existing elements.
+
+    /*
+    a.check_search ( 72 );
+    a.check_search ( 68 );
+    a.check_search ( 63 );
+    a.check_search ( 44 );
+    a.check_search ( 62 );
+    a.check_search ( 55 );
+    a.check_search ( 33 );
+    a.check_search ( 22 );
+    a.check_search ( 51 );
+    a.check_search ( 13 );
+    a.check_search ( 18 );
+    a.check_search ( 21 );
+    a.check_search ( 19 );
+    a.check_search ( 22 );
+    a.check_search ( 11 );
+    a.check_search ( 12 );
+    a.check_search ( 14 );
+    a.check_search ( 17 );
+    a.check_search ( 9 );
+    a.check_search ( 13 );
+    a.check_search ( 3 );
+    a.check_search ( 2 );
+    a.check_search ( 10 );
+
+    std::cout << "found all contained items" << nl;
+    */
+
+    // Non-existing elements.
+
+    // a.check_search ( 44 );
+
+    // for ( int i = 0; i < 64; ++i )
+    //  std::cout << i << ' ' << a.span ( i ).start << ' ' << a.span ( i ).end << nl;
+
+    std::cout << a.level ( 18 ) << nl;
+
+    exit ( 0 );
+
+    for ( int const & n : data ) {
+        if ( int const r = a.check_search ( n ); r != n ) {
+            std::cout << "did not pass.";
+            break;
+        }
+    }
+
+    //  for ( int i = 2; i < 73; ++i )
+    //    pr ( a, i );
 
     exit ( 0 );
 

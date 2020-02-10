@@ -22,12 +22,6 @@
   <ItemGroup>
     <None Include="..\LICENSE.md" />
     <None Include="..\README.md" />
-    <None Include="..\..\beap\beap.py">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="..\..\beap\test_beap.py">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\one_based_array.hpp">
