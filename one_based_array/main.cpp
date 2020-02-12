@@ -640,8 +640,6 @@ struct triangular_view {
 
     [[nodiscard]] static constexpr size_type size ( ) noexcept { return static_cast<size_type> ( Size ); }
 
-    [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type n_ ) noexcept { return n_ * ( ( n_ + 1 ) / 2 ); }
-
     [[nodiscard]] constexpr value_type const & at ( size_type level_, size_type index_ ) const noexcept {
         return std::addressof ( data[ std::size_t ( 1 ) + nth_triangular_number ( level_ ) ] )[ index_ ];
     }
@@ -649,27 +647,46 @@ struct triangular_view {
         return std::addressof ( data[ std::size_t ( 1 ) + nth_triangular_number ( level_ ) ] )[ index_ ];
     }
 
-    [[nodiscard]] static constexpr size_type level ( size_type i_ ) noexcept {
-        size_type idx = 1, level = 1;
-        while ( idx < i_ )
-            idx += ( level += 1 );
-        return level;
-    }
-
-    [[nodiscard]] static constexpr size_type level_begin ( size_type i_ ) noexcept {
-        n_ -= 1;
+    [[nodiscard]] static constexpr size_type level_end ( size_type i_ ) noexcept {
         for ( size_type idx = 1; true; idx += idx + 1 )
             if ( idx > i_ )
                 return idx;
         return -1;
     }
 
+    [[nodiscard]] static constexpr size_type level_begin ( size_type i_ ) noexcept { return level_end ( i_ - 1 ); }
+
     [[nodiscard]] static constexpr sax::pair<size_type, size_type> level_span ( size_type i_ ) noexcept {
-        n_ -= 1;
+        i_ -= 1;
         size_type idx = 1, level = 1;
-        while ( idx < n_ )
+        while ( idx < i_ )
             idx += ( level += 1 );
         return { idx, idx + level };
+    }
+
+    [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type r_ ) noexcept { return r_ * ( ( r_ + 1 ) / 2 ); }
+    [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
+        return static_cast<size_type> ( std::ceilf ( ( std::sqrtf ( float ( 8 * n_ + 1 ) ) - 1.0f ) / 2.0f ) );
+    }
+
+    [[nodiscard]] static constexpr size_type isqrt ( size_type num ) noexcept {
+        size_type res = 0;
+        size_type bit = 1 << 14; // The second-to-top bit is set: 1 << 30 for 32 bits
+
+        // "bit" starts at the highest power of four <= the argument.
+        while ( bit > num )
+            bit >>= 2;
+
+        while ( bit != 0 ) {
+            if ( num >= res + bit ) {
+                num -= res + bit;
+                res = ( res >> 1 ) + bit;
+            }
+            else
+                res >>= 1;
+            bit >>= 2;
+        }
+        return res;
     }
 
     value_type * data = nullptr;
@@ -679,13 +696,13 @@ template<typename Type, std::size_t Size>
 using triangular_array = std::array<Type, triangular_view<int, Size>::size ( )>;
 
 int main ( ) {
+    //
+    triangular_array<int, 16> d;
+    triangular_view<int, 16> a ( d.data ( ) );
 
-    triangular_array<int, 16> a;
-    triangular_view<int, 16> tv ( a.data ( ) );
-
-    tv.at ( 2, 4 ) = 25;
-
-    std::cout << tv.at ( 2, 4 ) << nl;
+    for ( int i = 0; i < 1'200; ++i )
+        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.level ( i ) << ' ' << a.level_fast ( i ) << ' '
+                  << std::setw ( 0 ) << std::boolalpha << ( a.level ( i ) == a.level_fast ( i ) ) << std::noboolalpha << nl;
 
     return EXIT_SUCCESS;
 }
