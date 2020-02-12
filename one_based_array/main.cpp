@@ -548,16 +548,10 @@ struct beap {
     // Levels and spans.
 
     [[nodiscard]] static constexpr size_type level_basic ( size_type n_, size_type l_ = 0, size_type s_ = 0 ) noexcept {
-        /*
-        size_type level = l_, stride = s_;
-        while ( level < n_ )
-            level += ++stride;
-        return stride;
-        */
-        size_type level = l_;
-        while ( level < n_ )
-            level += level + 1;
-        return level;
+        size_type idx = 1, lvl = 1;
+        while ( idx < n_ )
+            idx += ( lvl += 1 );
+        return lvl;
     }
 
     [[nodiscard]] static constexpr size_type small_level ( size_type l_ ) noexcept {
@@ -655,11 +649,27 @@ struct triangular_view {
         return std::addressof ( data[ std::size_t ( 1 ) + nth_triangular_number ( level_ ) ] )[ index_ ];
     }
 
-    [[nodiscard]] static constexpr size_type level ( size_type n_, size_type l_ = 1 ) noexcept {
-        for ( size_type level = l_; true; level += level + 1 )
-            if ( level > n_ )
-                return level;
+    [[nodiscard]] static constexpr size_type level ( size_type i_ ) noexcept {
+        size_type idx = 1, level = 1;
+        while ( idx < i_ )
+            idx += ( level += 1 );
+        return level;
+    }
+
+    [[nodiscard]] static constexpr size_type level_begin ( size_type i_ ) noexcept {
+        n_ -= 1;
+        for ( size_type idx = 1; true; idx += idx + 1 )
+            if ( idx > i_ )
+                return idx;
         return -1;
+    }
+
+    [[nodiscard]] static constexpr sax::pair<size_type, size_type> level_span ( size_type i_ ) noexcept {
+        n_ -= 1;
+        size_type idx = 1, level = 1;
+        while ( idx < n_ )
+            idx += ( level += 1 );
+        return { idx, idx + level };
     }
 
     value_type * data = nullptr;
