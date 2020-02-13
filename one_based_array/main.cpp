@@ -665,28 +665,28 @@ struct triangular_view {
     }
 
     [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type r_ ) noexcept { return r_ * ( ( r_ + 1 ) / 2 ); }
-    [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
-        return static_cast<size_type> ( std::ceilf ( ( std::sqrtf ( float ( 8 * n_ + 1 ) ) - 1.0f ) / 2.0f ) );
-    }
 
     [[nodiscard]] static constexpr size_type isqrt ( size_type num ) noexcept {
         size_type res = 0;
-        size_type bit = 1 << 14; // The second-to-top bit is set: 1 << 30 for 32 bits
-
+        size_type bit = 1 << 14; // The second-to-top bit is set: 1 << 30 for 32 bits.
         // "bit" starts at the highest power of four <= the argument.
         while ( bit > num )
             bit >>= 2;
-
         while ( bit != 0 ) {
             if ( num >= res + bit ) {
                 num -= res + bit;
                 res = ( res >> 1 ) + bit;
             }
-            else
+            else {
                 res >>= 1;
+            }
             bit >>= 2;
         }
         return res;
+    }
+
+    [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
+        return ( isqrt ( 8 * n_ ) - 1 ) / 2 + 1;
     }
 
     value_type * data = nullptr;
@@ -701,8 +701,9 @@ int main ( ) {
     triangular_view<int, 16> a ( d.data ( ) );
 
     for ( int i = 0; i < 1'200; ++i )
-        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.level ( i ) << ' ' << a.level_fast ( i ) << ' '
-                  << std::setw ( 0 ) << std::boolalpha << ( a.level ( i ) == a.level_fast ( i ) ) << std::noboolalpha << nl;
+        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.nth_triangular_root ( i ) << ' '
+                  << a.nth_triangular_root1 ( i ) << ' ' << std::setw ( 0 ) << std::boolalpha
+                  << ( a.nth_triangular_root ( i ) == a.nth_triangular_root1 ( i ) ) << std::noboolalpha << nl;
 
     return EXIT_SUCCESS;
 }
@@ -759,11 +760,6 @@ int main78678 ( ) {
 
     exit ( 0 );
     */
-    for ( int i = 0; i < 1'200; ++i )
-        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.level_basic ( i ) << ' ' << a.level ( i ) << ' '
-                  << std::setw ( 0 ) << std::boolalpha << ( a.level_basic ( i ) == a.level ( i ) ) << std::noboolalpha << nl;
-    exit ( 0 );
-
     for ( int const & n : data ) {
         if ( int const r = a.check_search ( n ); r != n ) {
             std::cout << "did not pass.";
