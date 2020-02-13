@@ -668,7 +668,7 @@ struct triangular_view {
 
     [[nodiscard]] static constexpr size_type isqrt ( size_type num ) noexcept {
         size_type res = 0;
-        size_type bit = 1 << 14; // The second-to-top bit is set: 1 << 30 for 32 bits.
+        size_type bit = 1 << 30; // The second-to-top bit is set: 1 << 14 for 16 bits.
         // "bit" starts at the highest power of four <= the argument.
         while ( bit > num )
             bit >>= 2;
