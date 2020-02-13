@@ -670,15 +670,16 @@ struct triangular_view {
 
     [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type r_ ) noexcept { return r_ * ( ( r_ + 1 ) / 2 ); }
 
-    [[nodiscard]] static constexpr size_type isqrt_alt ( size_type num ) noexcept {
+    [[nodiscard]] static constexpr size_type isqrt_alt ( size_type n_ ) noexcept {
+        assert ( n_ > 0 );
         size_type res = 0;
-        size_type bit = 1 << 30; // The second-to-top bit is set: 1 << 14 for 16 bits.
+        size_type bit = 1 << ( 8 * sizeof ( size_type ) - 2 );
         // "bit" starts at the highest power of four <= the argument.
-        while ( bit > num )
+        while ( bit > n_ )
             bit >>= 2;
         while ( bit != 0 ) {
-            if ( num >= res + bit ) {
-                num -= res + bit;
+            if ( n_ >= res + bit ) {
+                n_ -= res + bit;
                 res = ( res >> 1 ) + bit;
             }
             else {
@@ -694,7 +695,7 @@ struct triangular_view {
         size_type const xk1 = ( xk + n / xk ) / 2;
         return xk1 >= xk ? static_cast<half_width_size_type> ( xk ) : isqrt_impl ( n, xk1 );
     }
-    [[nodiscard]] static constexpr size_type isqrt ( uint64_t const n ) noexcept { return isqrt_impl ( n, n ); }
+    [[nodiscard]] static constexpr size_type isqrt ( size_type const n ) noexcept { return isqrt_impl ( n, n ); }
 
     [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
         return ( isqrt ( 8 * n_ ) - 1 ) / 2 + 1;
@@ -711,7 +712,7 @@ int main ( ) {
     triangular_array<int, 16> d;
     triangular_view<int, 16> a ( d.data ( ) );
 
-    for ( int i = 1; i < 1'200; ++i )
+    for ( int i = 1; i < 1'200'000; ++i )
         std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.isqrt ( i ) << ' ' << a.isqrt_alt ( i ) << ' '
                   << std::setw ( 0 ) << std::boolalpha << ( a.isqrt ( i ) == a.isqrt_alt ( i ) ) << std::noboolalpha << nl;
 
