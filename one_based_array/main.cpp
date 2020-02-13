@@ -145,9 +145,10 @@ struct beap {
     // beap height is 0, and for empty, we initialize it to - 1.
 
     public:
-    using value_type             = typename data_type::value_type;
-    using size_type              = int;
-    using difference_type        = int;
+    using value_type = typename data_type::value_type;
+    using size_type  = int32_t;
+
+    using difference_type        = size_type;
     using reference              = typename data_type::reference;
     using const_reference        = typename data_type::const_reference;
     using pointer                = typename data_type::pointer;
@@ -626,8 +627,11 @@ struct beap {
 template<typename Type, std::size_t Size>
 struct triangular_view {
 
-    using value_type = Type;
-    using size_type  = int;
+    using value_type           = Type;
+    using size_type            = int32_t;
+    using half_width_size_type = typename std::conditional<
+        sizeof ( size_type ) == sizeof ( int64_t ), int32_t,
+        typename std::conditional<sizeof ( size_type ) == sizeof ( int32_t ), int16_t, int8_t>::type>::type;
 
     constexpr triangular_view ( ) noexcept                         = default;
     constexpr triangular_view ( triangular_view const & ) noexcept = default;
@@ -666,7 +670,7 @@ struct triangular_view {
 
     [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type r_ ) noexcept { return r_ * ( ( r_ + 1 ) / 2 ); }
 
-    [[nodiscard]] static constexpr size_type isqrt ( size_type num ) noexcept {
+    [[nodiscard]] static constexpr size_type isqrt_alt ( size_type num ) noexcept {
         size_type res = 0;
         size_type bit = 1 << 30; // The second-to-top bit is set: 1 << 14 for 16 bits.
         // "bit" starts at the highest power of four <= the argument.
@@ -685,6 +689,13 @@ struct triangular_view {
         return res;
     }
 
+    // https://stackoverflow.com/questions/21657491/an-efficient-algorithm-to-calculate-the-integer-square-root-isqrt-of-arbitrari
+    [[nodiscard]] static constexpr half_width_size_type isqrt_impl ( size_type const n, size_type const xk ) noexcept {
+        size_type const xk1 = ( xk + n / xk ) / 2;
+        return xk1 >= xk ? static_cast<half_width_size_type> ( xk ) : isqrt_impl ( n, xk1 );
+    }
+    [[nodiscard]] static constexpr size_type isqrt ( uint64_t const n ) noexcept { return isqrt_impl ( n, n ); }
+
     [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
         return ( isqrt ( 8 * n_ ) - 1 ) / 2 + 1;
     }
@@ -700,10 +711,9 @@ int main ( ) {
     triangular_array<int, 16> d;
     triangular_view<int, 16> a ( d.data ( ) );
 
-    for ( int i = 0; i < 1'200; ++i )
-        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.nth_triangular_root ( i ) << ' '
-                  << a.nth_triangular_root1 ( i ) << ' ' << std::setw ( 0 ) << std::boolalpha
-                  << ( a.nth_triangular_root ( i ) == a.nth_triangular_root1 ( i ) ) << std::noboolalpha << nl;
+    for ( int i = 1; i < 1'200; ++i )
+        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.isqrt ( i ) << ' ' << a.isqrt_alt ( i ) << ' '
+                  << std::setw ( 0 ) << std::boolalpha << ( a.isqrt ( i ) == a.isqrt_alt ( i ) ) << std::noboolalpha << nl;
 
     return EXIT_SUCCESS;
 }
