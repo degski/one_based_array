@@ -348,7 +348,7 @@ struct beap {
                 }
                 size_type diff = i - s.start;
                 h -= 1;
-                s = std::move ( span ( h ) );
+                s = span ( h );
                 i = s.start + diff;
                 continue;
             }
@@ -358,7 +358,7 @@ struct beap {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
                     size_type diff = i - s.start;
                     h -= 1;
-                    s = std::move ( span ( h ) );
+                    s = span ( h );
                     i = s.start + diff;
                     continue;
                 }
@@ -626,7 +626,7 @@ struct triangular_view {
                 }
                 size_type diff = i - s.start;
                 h -= 1;
-                s = std::move ( span ( h ) );
+                s = span ( h );
                 i = s.start + diff;
                 continue;
             }
@@ -636,7 +636,7 @@ struct triangular_view {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
                     size_type diff = i - s.start;
                     h -= 1;
-                    s = std::move ( span ( h ) );
+                    s = span ( h );
                     i = s.start + diff;
                     continue;
                 }
