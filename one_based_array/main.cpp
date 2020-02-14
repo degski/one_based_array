@@ -29,11 +29,17 @@
 #include <array>
 #include <sax/iostream.hpp>
 #include <initializer_list>
+#include <sax/integer.hpp>
 #include <limits> // For Point2.
 #include <optional>
+#include <random>
+#include <sax/splitmix.hpp>
+#include <sax/uniform_int_distribution.hpp>
 #include <span>
 #include <tuple>
 #include <type_traits>
+
+#include <plf/plf_nanotimer.h>
 
 #include "one_based_array.hpp"
 
@@ -174,7 +180,8 @@ struct beap {
     beap ( beap && b_ )      = default;
 
     template<typename ForwardIt>
-    beap ( ForwardIt b_, ForwardIt e_ ) : arr ( b_, e_ ), height ( level ( static_cast<size_type> ( e_ - b_ ) ) ) {}
+    beap ( ForwardIt b_, ForwardIt e_ ) :
+        arr ( b_, e_ ), height ( sax::nth_triangular_ceil ( static_cast<size_type> ( e_ - b_ ) ) ) {}
 
     [[maybe_unused]] beap & operator= ( beap const & b_ ) = default;
     [[maybe_unused]] beap & operator= ( beap && b_ ) = default;
@@ -546,69 +553,6 @@ struct beap {
         return s.start;
     }
 
-    // Levels and spans.
-
-    [[nodiscard]] static constexpr size_type level_basic ( size_type n_, size_type l_ = 0, size_type s_ = 0 ) noexcept {
-        size_type idx = 1, lvl = 1;
-        while ( idx < n_ )
-            idx += ( lvl += 1 );
-        return lvl;
-    }
-
-    [[nodiscard]] static constexpr size_type small_level ( size_type l_ ) noexcept {
-        alignas ( 64 ) constexpr lookup_table_type<56> level_small = { 0, 1, 2, 2, 3,  3,  3,  4,  4,  4,  4,  5,  5,  5,
-                                                                       5, 5, 6, 6, 6,  6,  6,  6,  7,  7,  7,  7,  7,  7,
-                                                                       7, 8, 8, 8, 8,  8,  8,  8,  8,  9,  9,  9,  9,  9,
-                                                                       9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
-        return level_small[ l_ ];
-    }
-
-    template<size_type StartLevel>
-    [[nodiscard]] static size_type medium_level ( size_type l_ ) noexcept {
-        constexpr size_type sol = start_of_level ( StartLevel ) + 1, l = StartLevel;
-        if ( l_ < ( sol + l ) )
-            return l;
-        if ( l_ < ( sol + 2 * l + 1 ) )
-            return l + 1;
-        if ( l_ < ( sol + 3 * l + 3 ) )
-            return l + 2;
-        return l + 3;
-    }
-
-    [[nodiscard]] size_type level ( size_type l_ ) const noexcept {
-        if ( l_ < start_of_level ( 27 ) ) {
-            if ( l_ <= start_of_level ( 11 ) )
-                return small_level ( l_ );
-            if ( l_ <= start_of_level ( 15 ) )
-                return medium_level<11> ( l_ );
-            if ( l_ <= start_of_level ( 19 ) )
-                return medium_level<15> ( l_ );
-            if ( l_ <= start_of_level ( 23 ) )
-                return medium_level<19> ( l_ );
-            return medium_level<23> ( l_ );
-        }
-        return level_basic ( l_, start_of_level ( 27 ), level_basic ( start_of_level ( 27 ) ) );
-    }
-
-    [[nodiscard]] static constexpr size_type nth_triangular_number ( size_type n_ ) noexcept {
-        assert ( n_ >= 0 );
-        return ( n_ * ( n_ + 1 ) ) / 2;
-    }
-
-    [[nodiscard]] static constexpr size_type start_of_level ( size_type level_ ) noexcept {
-        assert ( level_ > 0 );
-        return nth_triangular_number ( level_ - 1 );
-    }
-    [[nodiscard]] static constexpr size_type end_of_level ( size_type level_ ) noexcept {
-        assert ( level_ > 0 );
-        return nth_triangular_number ( level_ );
-    }
-
-    [[nodiscard]] static constexpr span_type level_span ( size_type level_ ) noexcept {
-        assert ( level_ > 0 );
-        return { start_of_level ( level_ ), end_of_level ( level_ ) };
-    }
-
     [[nodiscard]] static constexpr size_type next_level_span ( size_type level_ ) noexcept {
         assert ( level_ > 0 );
         return level_span ( level_ + 1 );
@@ -633,88 +577,160 @@ struct triangular_view {
         sizeof ( size_type ) == sizeof ( int64_t ), int32_t,
         typename std::conditional<sizeof ( size_type ) == sizeof ( int32_t ), int16_t, int8_t>::type>::type;
 
+    struct span_type {
+        size_type start, end;
+    };
+
     constexpr triangular_view ( ) noexcept                         = default;
     constexpr triangular_view ( triangular_view const & ) noexcept = default;
     constexpr triangular_view ( triangular_view && ) noexcept      = delete;
+
+    constexpr ~triangular_view ( ) noexcept {
+        data   = nullptr;
+        height = -1;
+        size   = 0;
+    }
 
     [[maybe_unused]] constexpr triangular_view & operator= ( triangular_view const & ) noexcept = default;
     [[maybe_unused]] constexpr triangular_view & operator= ( triangular_view && ) noexcept = delete;
 
     constexpr triangular_view ( value_type * pointer_ ) noexcept : data ( pointer_ ) {}
 
-    [[nodiscard]] static constexpr size_type size ( ) noexcept { return static_cast<size_type> ( Size ); }
+    [[nodiscard]] static constexpr size_type capacity ( ) noexcept { return static_cast<size_type> ( Size ); }
+
+    [[nodiscard]] static constexpr size_type end_idx ( ) noexcept { return static_cast<size_type> ( Size ); }
+    [[nodiscard]] static constexpr size_type end_level ( ) noexcept {
+        return static_cast<size_type> ( sax::nth_triangular ( Size ) );
+    }
 
     [[nodiscard]] constexpr value_type const & at ( size_type level_, size_type index_ ) const noexcept {
-        return std::addressof ( data[ std::size_t ( 1 ) + nth_triangular_number ( level_ ) ] )[ index_ ];
+        return *std::addressof ( data[ std::size_t ( 1 ) + idx_from_level_lidx ( level_, index_ ) ] );
     }
     [[nodiscard]] constexpr value_type & at ( size_type level_, size_type index_ ) noexcept {
-        return std::addressof ( data[ std::size_t ( 1 ) + nth_triangular_number ( level_ ) ] )[ index_ ];
+        return *std::addressof ( data[ std::size_t ( 1 ) + idx_from_level_lidx ( level_, index_ ) ] );
     }
 
-    [[nodiscard]] static constexpr size_type level_end ( size_type i_ ) noexcept {
-        for ( size_type idx = 1; true; idx += idx + 1 )
-            if ( idx > i_ )
-                return idx;
-        return -1;
-    }
+    // Search.
 
-    [[nodiscard]] static constexpr size_type level_begin ( size_type i_ ) noexcept { return level_end ( i_ - 1 ); }
-
-    [[nodiscard]] static constexpr sax::pair<size_type, size_type> level_span ( size_type i_ ) noexcept {
-        i_ -= 1;
-        size_type idx = 1, level = 1;
-        while ( idx < i_ )
-            idx += ( level += 1 );
-        return { idx, idx + level };
-    }
-
-    [[nodiscard]] static constexpr std::size_t nth_triangular_number ( size_type r_ ) noexcept { return r_ * ( ( r_ + 1 ) / 2 ); }
-
-    [[nodiscard]] static constexpr size_type isqrt_alt ( size_type n_ ) noexcept {
-        assert ( n_ > 0 );
-        size_type res = 0;
-        size_type bit = 1 << ( 8 * sizeof ( size_type ) - 2 );
-        // "bit" starts at the highest power of four <= the argument.
-        while ( bit > n_ )
-            bit >>= 2;
-        while ( bit != 0 ) {
-            if ( n_ >= res + bit ) {
-                n_ -= res + bit;
-                res = ( res >> 1 ) + bit;
+    [[nodiscard]] span_type search ( value_type const & v_ ) const noexcept {
+        size_type h = height;
+        span_type s = span ( h );
+        size_type i = s.start;
+        for ( ever ) {
+            std::printf ( "search: idx: %d\n", i );
+            if ( v_ > data[ i ] ) {
+                std::printf ( "moving up ^" );
+                if ( i == s.end ) {
+                    std::printf ( "can't move up\n" );
+                    break;
+                }
+                size_type diff = i - s.start;
+                h -= 1;
+                s = std::move ( span ( h ) );
+                i = s.start + diff;
+                continue;
+            }
+            else if ( v_ < data[ i ] ) {
+                std::printf ( "moving right ->\n" );
+                if ( i == size - 1 ) {
+                    std::printf ( "last element reached, can't move right, moving up instead\n" );
+                    size_type diff = i - s.start;
+                    h -= 1;
+                    s = std::move ( span ( h ) );
+                    i = s.start + diff;
+                    continue;
+                }
+                size_type diff     = i - s.start;
+                span_type new_span = next_span ( s );
+                size_type new_idx  = new_span.start + diff + 1;
+                if ( new_idx < size ) {
+                    h += 1;
+                    s = std::move ( new_span );
+                    i = new_idx;
+                    continue;
+                }
+                std::printf ( "can't move right, moving right-up " );
+                if ( i == s.end ) {
+                    std::printf ( "can't move right-up\n" );
+                    break;
+                }
+                i += 1;
+                continue;
             }
             else {
-                res >>= 1;
+                return { i, h };
             }
-            bit >>= 2;
         }
-        return res;
+        std::printf ( "not found\n" );
+        return { 0, 0 };
     }
 
-    // https://stackoverflow.com/questions/21657491/an-efficient-algorithm-to-calculate-the-integer-square-root-isqrt-of-arbitrari
-    [[nodiscard]] static constexpr half_width_size_type isqrt_impl ( size_type const n, size_type const xk ) noexcept {
-        size_type const xk1 = ( xk + n / xk ) / 2;
-        return xk1 >= xk ? static_cast<half_width_size_type> ( xk ) : isqrt_impl ( n, xk1 );
-    }
-    [[nodiscard]] static constexpr size_type isqrt ( size_type const n ) noexcept { return isqrt_impl ( n, n ); }
+    // Conversion.
 
-    [[nodiscard]] static constexpr size_type nth_triangular_root ( size_type n_ ) noexcept {
-        return ( isqrt ( 8 * n_ ) - 1 ) / 2 + 1;
+    [[nodiscard]] static constexpr value_type const & idx_from_level_lidx ( size_type level_, size_type index_ ) noexcept {
+        return sax::nth_triangular ( level_ ) + index_;
     }
+    [[nodiscard]] static constexpr span_type level_lidx_from_idx ( size_type index_ ) noexcept {
+        size_type level = sax::nth_triangular_root ( index_ ), lidx = index_ - sax::nth_triangular ( level );
+        return { std::move ( level ), std::move ( lidx ) };
+    }
+    [[nodiscard]] static constexpr size_type lidx_from_idx ( size_type index_ ) noexcept {
+        return index_ - sax::nth_triangular_floor ( index_ );
+    }
+    [[nodiscard]] static constexpr size_type level_from_idx ( size_type index_ ) noexcept {
+        return sax::nth_triangular_root ( index_ );
+    }
+
+    // Beginnings and ends.
+
+    [[nodiscard]] static constexpr size_type begin ( size_type index_ ) noexcept { return sax::nth_triangular_floor ( index_ ); }
+    [[nodiscard]] static constexpr size_type end ( size_type index_ ) noexcept { return sax::nth_triangular_ceil ( index_ ); }
+    [[nodiscard]] static constexpr span_type span ( size_type index_ ) noexcept {
+        size_type end = sax::nth_triangular_root ( index_ ), begin = sax::nth_triangular ( end );
+        end += begin;
+        return { std::move ( begin ), std::move ( end ) };
+    }
+
+    [[nodiscard]] static constexpr span_type level_span ( size_type level_ ) noexcept {
+        size_type begin = sax::nth_triangular ( level_ );
+        level_ += begin;
+        return { std::move ( begin ), std::move ( level_ ) };
+    }
+    // The data pointer.
 
     value_type * data = nullptr;
+    size_type height = -1, size = 0;
 };
 
 template<typename Type, std::size_t Size>
-using triangular_array = std::array<Type, triangular_view<int, Size>::size ( )>;
+using triangular_array = std::array<Type, triangular_view<int, Size>::capacity ( )>;
 
 int main ( ) {
-    //
+
     triangular_array<int, 16> d;
     triangular_view<int, 16> a ( d.data ( ) );
 
-    for ( int i = 1; i < 1'200'000; ++i )
-        std::cout << std::setw ( 4 ) << i << ' ' << std::setw ( 2 ) << a.isqrt ( i ) << ' ' << a.isqrt_alt ( i ) << ' '
-                  << std::setw ( 0 ) << std::boolalpha << ( a.isqrt ( i ) == a.isqrt_alt ( i ) ) << std::noboolalpha << nl;
+    constexpr int size = 1'024;
+
+    std::array<int, size> data = { };
+
+    sax::splitmix64 rng{ [] ( ) {
+        std::random_device rdev;
+        return ( static_cast<std::size_t> ( rdev ( ) ) << 32 ) | static_cast<std::size_t> ( rdev ( ) );
+    }( ) };
+    sax::uniform_int_distribution<int> dis_lev{ 3, size * size - 1 };
+    sax::uniform_int_distribution<std::size_t> dis_idx{ 0, size - 1 };
+
+    plf::nanotimer t;
+
+    t.start ( );
+
+    for ( int i = 0; i < size * size; ++i ) {
+    }
+
+    uint64_t time = static_cast<uint64_t> ( t.get_elapsed_ms ( ) );
+
+    std::cout << time << " ms " << data[ dis_idx ( rng ) ] << nl;
 
     return EXIT_SUCCESS;
 }
