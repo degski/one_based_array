@@ -348,7 +348,7 @@ struct beap {
                 }
                 size_type diff = i - s.start;
                 h -= 1;
-                s = span ( h );
+                s = std::move ( span ( h ) );
                 i = s.start + diff;
                 continue;
             }
@@ -358,7 +358,7 @@ struct beap {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
                     size_type diff = i - s.start;
                     h -= 1;
-                    s = span ( h );
+                    s = std::move ( span ( h ) );
                     i = s.start + diff;
                     continue;
                 }
@@ -367,7 +367,7 @@ struct beap {
                 size_type new_idx  = new_span.start + diff + 1;
                 if ( new_idx < size ( ) ) {
                     h += 1;
-                    s = new_span;
+                    s = std::move ( new_span );
                     i = new_idx;
                     continue;
                 }
