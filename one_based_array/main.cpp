@@ -165,7 +165,7 @@ struct beap {
     using const_reverse_iterator = typename data_type::const_reverse_iterator;
 
     struct span_type {
-        size_type start, end;
+        size_type begin, end;
     };
 
     private:
@@ -195,14 +195,14 @@ struct beap {
 
     [[nodiscard]] span_type next_span ( span_type span_ ) const noexcept {
         auto tmp = span_.end + 1;
-        return { tmp, 2 * tmp - span_.start };
+        return { tmp, 2 * tmp - span_.begin };
     }
     [[nodiscard]] span_type prev_span ( span_type span_ ) const noexcept {
-        return { 2 * span_.start - span_.end, span_.start - 1 };
+        return { 2 * span_.begin - span_.end, span_.begin - 1 };
     }
 
     [[nodiscard]] size_type next_span_start ( span_type const & span_ ) const noexcept { return span_.end + 1; }
-    [[nodiscard]] size_type prev_span_start ( span_type const & span_ ) const noexcept { return 2 * span_.start - span_.end; }
+    [[nodiscard]] size_type prev_span_start ( span_type const & span_ ) const noexcept { return 2 * span_.begin - span_.end; }
 
     // Convert to use sane 0-based indexes both for "block" (span)
     // and array.
@@ -225,7 +225,7 @@ struct beap {
         };
         size_type h   = height;
         span_type s   = span ( h );
-        size_type idx = s.start;
+        size_type idx = s.begin;
         for ( ever ) {
             const_reference at_idx = at ( idx );
             if ( bool unequal = v_ != at_idx; unequal ) {
@@ -237,7 +237,7 @@ struct beap {
                     // So: if v_ is greater than, and move up along the column.
                     if ( idx == s.end )
                         return { 0, 0 };
-                    size_type diff = idx - s.start;
+                    size_type diff = idx - s.begin;
                     h -= 1;
                     idx = prev_span_start ( s ) + diff;
                     continue;
@@ -248,14 +248,14 @@ struct beap {
                     // each.
                     // => less, move right along the row, or up and right
                     if ( idx == size ( ) - 1 ) {
-                        size_type diff = idx - s.start;
+                        size_type diff = idx - s.begin;
                         h -= 1;
                         idx = prev_span_start ( s ) + diff;
                         continue;
                     }
-                    size_type diff     = idx - s.start;
+                    size_type diff     = idx - s.begin;
                     span_type new_span = next_span ( s );
-                    size_type new_idx  = new_span.start + diff + 1;
+                    size_type new_idx  = new_span.begin + diff + 1;
                     if ( new_idx < size ( ) ) {
                         h += 1;
                         s   = new_span;
@@ -284,7 +284,7 @@ struct beap {
     [[nodiscard]] span_type search_1 ( value_type const & v_ ) const noexcept {
         size_type h = height;
         span_type s = span ( h );
-        size_type i = s.start;
+        size_type i = s.begin;
         for ( ever ) {
             std::printf ( "search: idx: %d\n", i );
             if ( bool idx_eq_end = is_idx_eq_end ( i ), is_greater = not idx_eq_end ? v_ > arr[ i ] : true; is_greater ) {
@@ -293,25 +293,25 @@ struct beap {
                     std::printf ( "can't move up\n" );
                     break;
                 }
-                size_type diff = i - s.start;
+                size_type diff = i - s.begin;
                 h -= 1;
                 s = span ( h );
-                i = s.start + diff;
+                i = s.begin + diff;
                 continue;
             }
             else if ( bool idx_eq_end = is_idx_eq_end ( i ), is_less = not idx_eq_end ? v_ > arr[ i ] : true; is_less ) {
                 std::printf ( "moving right ->\n" );
                 if ( i == size ( ) - 1 ) {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
-                    size_type diff = i - s.start;
+                    size_type diff = i - s.begin;
                     h -= 1;
                     s = span ( h );
-                    i = s.start + diff;
+                    i = s.begin + diff;
                     continue;
                 }
-                size_type diff     = i - s.start;
+                size_type diff     = i - s.begin;
                 span_type new_span = next_span ( s );
-                size_type new_idx  = new_span.start + diff + 1;
+                size_type new_idx  = new_span.begin + diff + 1;
                 if ( new_idx < size ( ) ) {
                     h += 1;
                     s = new_span;
@@ -337,7 +337,7 @@ struct beap {
     [[nodiscard]] span_type search_2 ( value_type const & v_ ) const noexcept {
         size_type h = height;
         span_type s = span ( h );
-        size_type i = s.start;
+        size_type i = s.begin;
         for ( ever ) {
             std::printf ( "search: idx: %d\n", i );
             if ( v_ > arr[ i ] ) {
@@ -346,25 +346,25 @@ struct beap {
                     std::printf ( "can't move up\n" );
                     break;
                 }
-                size_type diff = i - s.start;
+                size_type diff = i - s.begin;
                 h -= 1;
                 s = span ( h );
-                i = s.start + diff;
+                i = s.begin + diff;
                 continue;
             }
             else if ( v_ < arr[ i ] ) {
                 std::printf ( "moving right ->\n" );
                 if ( i == size ( ) - 1 ) {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
-                    size_type diff = i - s.start;
+                    size_type diff = i - s.begin;
                     h -= 1;
                     s = span ( h );
-                    i = s.start + diff;
+                    i = s.begin + diff;
                     continue;
                 }
-                size_type diff     = i - s.start;
+                size_type diff     = i - s.begin;
                 span_type new_span = next_span ( s );
-                size_type new_idx  = new_span.start + diff + 1;
+                size_type new_idx  = new_span.begin + diff + 1;
                 if ( new_idx < size ( ) ) {
                     h += 1;
                     s = std::move ( new_span );
@@ -391,10 +391,10 @@ struct beap {
     [[nodiscard]] size_type filter_up ( size_type idx_, size_type h_ ) noexcept {
         pointer v = arr.data ( ) + idx_;
         while ( h_ ) {
-            auto [ start, end ] = span ( h_ );
-            size_type diff = idx_ - start, left_p = 0, right_p = 0, val_l = 0, val_r = 0;
+            auto [ begin, end ] = span ( h_ );
+            size_type diff = idx_ - begin, left_p = 0, right_p = 0, val_l = 0, val_r = 0;
             auto [ st_p, end_p ] = span ( h_ - 1 );
-            if ( idx_ != start ) {
+            if ( idx_ != begin ) {
                 left_p = st_p + diff - 1;
                 val_l  = left_p;
             }
@@ -423,9 +423,9 @@ struct beap {
     // Percolate an element down the beap.
     [[nodiscard]] size_type filter_down ( size_type idx_, size_type h_ ) noexcept {
         while ( h_ < height - 1 ) {
-            auto [ start, end ]  = span ( h_ );
-            auto [ st_c, end_c ] = span ( h_ + 1 );
-            size_type diff = idx_ - start, left_c = st_c + diff, right_c = 0, val_l = 0, val_r = 0;
+            auto [ begin, end ]     = span ( h_ );
+            auto [ begin_c, end_c ] = span ( h_ + 1 );
+            size_type diff = idx_ - begin, left_c = begin_c + diff, right_c = 0, val_l = 0, val_r = 0;
             if ( left_c < size ( ) ) {
                 val_l   = left_c;
                 right_c = left_c + 1;
@@ -458,8 +458,8 @@ struct beap {
     // If last array element as at the span end, then adding
     // new element grows beap height.
     [[nodiscard]] size_type insert ( value_type const & v_ ) {
-        auto [ start, end ] = span ( height );
-        std::cout << "inserting " << v_ << " start " << start << " end " << end << nl;
+        auto [ begin, end ] = span ( height );
+        std::cout << "inserting " << v_ << " begin " << begin << " end " << end << nl;
         // If last array element as at the span end, then adding
         // new element grows beap height.
         size_type eos = size ( ) - 1;
@@ -472,10 +472,10 @@ struct beap {
     // Remove element with array index idx at the beap span of height h.
     // The height needs to be passed to avoid square root operation to find it.
     std::optional<value_type> remove ( size_type idx_, size_type h_ ) noexcept {
-        auto [ start, end ] = span ( height );
-        // If last array element as at the span start, then removing
+        auto [ begin, end ] = span ( height );
+        // If last array element as at the span begin, then removing
         // it decreases the beap height.
-        height -= ( end_of_storage ( ) == start );
+        height -= ( end_of_storage ( ) == begin );
         value_type && last = pop ( );
         if ( idx_ == size ( ) )
             return { };
@@ -548,9 +548,9 @@ struct beap {
 
     value_type check_search ( value_type i_ ) const noexcept {
         auto s = search_2 ( i_ );
-        // std::cout << "i " << i_ << " " << s.start << " " << s.end << nl;
-        assert ( at ( s.start ) == i_ );
-        return s.start;
+        // std::cout << "i " << i_ << " " << s.begin << " " << s.end << nl;
+        assert ( at ( s.begin ) == i_ );
+        return s.begin;
     }
 
     [[nodiscard]] static constexpr size_type next_level_span ( size_type level_ ) noexcept {
@@ -578,7 +578,7 @@ struct triangular_view {
         typename std::conditional<sizeof ( size_type ) == sizeof ( int32_t ), int16_t, int8_t>::type>::type;
 
     struct span_type {
-        size_type start, end;
+        size_type begin, end;
     };
 
     constexpr triangular_view ( ) noexcept                         = default;
@@ -615,7 +615,7 @@ struct triangular_view {
     [[nodiscard]] span_type search ( value_type const & v_ ) const noexcept {
         size_type h = height;
         span_type s = span ( h );
-        size_type i = s.start;
+        size_type i = s.begin;
         for ( ever ) {
             std::printf ( "search: idx: %d\n", i );
             if ( v_ > data[ i ] ) {
@@ -624,25 +624,25 @@ struct triangular_view {
                     std::printf ( "can't move up\n" );
                     break;
                 }
-                size_type diff = i - s.start;
+                size_type diff = i - s.begin;
                 h -= 1;
                 s = span ( h );
-                i = s.start + diff;
+                i = s.begin + diff;
                 continue;
             }
             else if ( v_ < data[ i ] ) {
                 std::printf ( "moving right ->\n" );
                 if ( i == size - 1 ) {
                     std::printf ( "last element reached, can't move right, moving up instead\n" );
-                    size_type diff = i - s.start;
+                    size_type diff = i - s.begin;
                     h -= 1;
                     s = span ( h );
-                    i = s.start + diff;
+                    i = s.begin + diff;
                     continue;
                 }
-                size_type diff     = i - s.start;
+                size_type diff     = i - s.begin;
                 span_type new_span = next_span ( s );
-                size_type new_idx  = new_span.start + diff + 1;
+                size_type new_idx  = new_span.begin + diff + 1;
                 if ( new_idx < size ) {
                     h += 1;
                     s = std::move ( new_span );
@@ -723,7 +723,7 @@ int main ( ) {
 
     plf::nanotimer t;
 
-    t.start ( );
+    t.begin ( );
 
     for ( int i = 0; i < size * size; ++i ) {
     }
@@ -778,7 +778,7 @@ int main78678 ( ) {
     // a.check_search ( 44 );
 
     // for ( int i = 0; i < 64; ++i )
-    //  std::cout << i << ' ' << a.span ( i ).start << ' ' << a.span ( i ).end << nl;
+    //  std::cout << i << ' ' << a.span ( i ).begin << ' ' << a.span ( i ).end << nl;
     /*
     for ( int i = 1; i < 1'200; ++i )
         std::cout << std::setw ( 4 ) << std::setfill ( ' ' ) << i << ' ' << std::setw ( 6 ) << std::setfill ( ' ' )
@@ -807,10 +807,10 @@ int main78678 ( ) {
 
     auto s0 = a.span ( 0 );
     for ( int i = 0; i <= 101; ++i ) {
-        std::cout << i << ' ' << a.span ( i ).start << ' ' << a.span ( i ).end << " " << ( ( i * ( i + 1 ) ) / 2 ) << nl;
+        std::cout << i << ' ' << a.span ( i ).begin << ' ' << a.span ( i ).end << " " << ( ( i * ( i + 1 ) ) / 2 ) << nl;
         auto ns = a.next_span ( s0 );
         auto ps = a.prev_span ( ns );
-        assert ( s0.start == ps.start and s0.start == ps.end );
+        assert ( s0.begin == ps.begin and s0.begin == ps.end );
         s0 = ps;
     }
 
